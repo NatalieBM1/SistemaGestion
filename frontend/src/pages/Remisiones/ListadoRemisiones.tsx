@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Plus, Printer, Search } from "lucide-react";
+import { Copy, Pencil, Plus, Printer, Search } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getApiErrorMessage } from "../../api/errors";
@@ -126,10 +126,16 @@ export function ListadoRemisiones() {
     { key: "valor_total", header: "Valor total", align: "right", render: (r) => formatMoney(r.valor_total) },
     {
       key: "acciones",
-      header: "",
+      header: "Acciones",
       align: "right",
       render: (r) => (
         <div className={tableStyles.actionsCell}>
+          <IconButton
+            variant="accent"
+            label="Editar remisión"
+            icon={<Pencil size={14} strokeWidth={2} />}
+            onClick={() => navigate(`/remisiones/${r.id}`)}
+          />
           <IconButton
             variant="accent"
             label="Agregar producto"
