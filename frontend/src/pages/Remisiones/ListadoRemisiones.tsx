@@ -89,6 +89,7 @@ export function ListadoRemisiones() {
       queryClient.invalidateQueries({ queryKey: ["remisiones"] });
       toast.success(`Remisión '${nueva.numero_remision}' creada como copia de '${copiarTarget?.numero_remision}'.`);
       setCopiarTarget(null);
+      navigate(`/remisiones/${nueva.id}`);
     },
     onError: (error) => {
       toast.error(getApiErrorMessage(error, "No se pudo copiar la remisión."));
