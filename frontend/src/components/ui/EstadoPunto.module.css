@@ -1,0 +1,32 @@
+.estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #3a4468;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--estado-color);
+  box-shadow: 0 0 10px var(--estado-color);
+}
+
+.success {
+  --estado-color: #19b37a;
+}
+
+.warning {
+  --estado-color: #e6a100;
+}
+
+.danger {
+  --estado-color: #d64545;
+}
+
+.neutral {
+  --estado-color: #9aa3c4;
+}

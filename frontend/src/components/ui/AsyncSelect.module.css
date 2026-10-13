@@ -1,0 +1,142 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+}
+
+.label {
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.required {
+  margin-left: 2px;
+  color: var(--accent);
+}
+
+.control {
+  position: relative;
+}
+
+.input {
+  height: 38px;
+  width: 100%;
+  padding: 0 32px 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.input::placeholder {
+  color: var(--text-disabled);
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--border-hover);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+
+.input:disabled {
+  background: var(--bg-canvas);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.inputError {
+  border-color: var(--danger);
+}
+
+.inputError:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-bg);
+}
+
+.chevron {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 50;
+  padding: var(--space-1);
+}
+
+.option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-body);
+  color: var(--text-primary);
+}
+
+.option:hover {
+  background: var(--bg-canvas);
+}
+
+.optionActive {
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.optionClear {
+  color: var(--text-secondary);
+}
+
+.dropdownMessage {
+  padding: var(--space-3);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.errorMessage {
+  font-size: var(--text-caption);
+  color: var(--danger);
+}
+
+.hint {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.leftIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+  color: #8793c4;
+  pointer-events: none;
+}
+
+.hasIcon {
+  padding-left: 40px;
+}

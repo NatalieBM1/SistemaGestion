@@ -1,0 +1,51 @@
+# ── Python ───────────────────────────────────────────────────────────────────
+.venv/
+backend/.venv/
+__pycache__/
+backend/__pycache__/
+backend/**/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+backend/.ruff_cache/
+backend/.pytest_cache/
+**/.pytest_cache/
+backend/dist/
+*.egg-info/
+
+# ── Node ─────────────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── Variables de entorno (nunca commitear secretos) ──────────────────────────
+.env
+frontend/.env
+*.env.local
+*.env.*.local
+
+# ── Datos de importación y backups (la BD se entrega ya cargada) ─────────────
+backend/app/data_import/backups/
+backend/app/data_import/*.xlsm
+backend/app/data_import/*.csv
+*.dump
+*.sql.gz
+
+# ── Archivos temporales y logs ────────────────────────────────────────────────
+tmp_*
+*.log
+*.tmp
+
+# ── Editor ────────────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini

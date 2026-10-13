@@ -1,0 +1,84 @@
+:root {
+  /* Evita que Chrome/Edge fuercen un tema oscuro automático (invierte colores
+     y convierte el azul de acento en morado) cuando el sitio no declara esquema. */
+  color-scheme: light;
+
+  /* color */
+  --bg-canvas: #f7f8fa;
+  --bg-surface: #ffffff;
+  --border: #e4e7ec;
+  --border-hover: #c7cdd6;
+  --text-primary: #10131a;
+  --text-secondary: #5b6472;
+  --text-disabled: #a0a7b4;
+  --accent: #2f5fe0;
+  --accent-hover: #1e47c2;
+  --accent-deep: #16308a;
+  --brand-navy: #000079;
+  --accent-soft: #4a75e8;
+  --accent-ring: rgba(47, 95, 224, 0.35);
+  --accent-tint: #eaf0ff;
+  --side-top: #1f3fae;
+  --side-mid: #1a35a0;
+  --side-bottom: #142a86;
+  --side-text: #aebbea;
+  --side-text-strong: #ffffff;
+  --side-group: #8ea2dc;
+  --success: #1e8e5a;
+  --success-bg: #e7f7ee;
+  --danger: #d63a3a;
+  --danger-bg: #fdeaea;
+  --warning: #b98900;
+  --warning-bg: #fff7e0;
+
+  /* radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* shadow — sm para bordes sutiles, md para tarjetas elevadas, lg para modales/paneles flotantes.
+     Las tarjetas de listado usan --shadow-card (profundidad sutil, con tinte de marca). */
+  --shadow-sm: 0 1px 2px rgba(16, 19, 26, 0.04);
+  --shadow-md: 0 4px 16px rgba(16, 19, 26, 0.08);
+  --shadow-lg: 0 8px 32px rgba(16, 19, 26, 0.16);
+  --shadow-card: 0 1px 2px rgba(16, 19, 26, 0.05), 0 4px 16px rgba(0, 0, 79, 0.06);
+
+  /* sombra para elevar el botón primario y darle profundidad/jerarquía */
+  --shadow-btn: 0 1px 2px rgba(47, 95, 224, 0.15), 0 2px 8px rgba(47, 95, 224, 0.12);
+  --shadow-btn-hover: 0 2px 4px rgba(47, 95, 224, 0.2), 0 4px 14px rgba(47, 95, 224, 0.18);
+
+  /* overlay de modal */
+  --overlay-bg: rgba(16, 19, 26, 0.5);
+
+  /* transición estándar para toda la app */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+
+  /* spacing — escala de 4px */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* typography */
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+
+  --text-caption: 12px;
+  --text-body: 14px;
+  --text-body-lg: 16px;
+  --text-subtitle: 20px;
+  --text-title: 28px;
+
+  --leading-body: 1.5;
+  --leading-title: 1.2;
+
+  /* layout */
+  --sidebar-width: 256px;
+  --content-max-width: 1440px;
+  --breakpoint-mobile: 768px;
+}

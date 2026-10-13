@@ -1,0 +1,78 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.text {
+  min-width: 0;
+}
+
+.crumb {
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.crumbLink {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.crumbLink:hover {
+  text-decoration: underline;
+}
+
+.title {
+  margin: 0;
+  color: var(--brand-navy);
+  font-size: 44px;
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+.subtitle {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-body);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  max-width: 100%;
+}
+
+.glow {
+  height: 1px;
+  margin: 16px 0 20px;
+  background: linear-gradient(90deg, var(--accent), rgba(47, 95, 224, 0.25) 40%, transparent 85%);
+  box-shadow: 0 0 14px rgba(47, 95, 224, 0.5);
+}
+
+@media (max-width: 640px) {
+  .title {
+    font-size: 34px;
+  }
+
+  .head {
+    width: 100%;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

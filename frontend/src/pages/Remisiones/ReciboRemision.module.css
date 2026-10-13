@@ -1,0 +1,200 @@
+/* Calibri es la fuente de la plantilla; Carlito es su reemplazo métricamente
+   compatible y libre, por si Calibri no está instalada en el equipo. */
+.recibo {
+  font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif;
+  font-size: 9.3px;
+  line-height: 1.35;
+  color: #000000;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  height: 100%;
+  forced-color-adjust: none;
+}
+
+/* Chromium remapea texto a colores de "forced-colors" (azul/oliva) al
+   imprimir si el sistema tiene alto contraste o un tema de color activo.
+   Se fuerza negro explícito en todo el recibo para que el impreso no
+   dependa de la configuración de color del equipo. */
+@media print {
+  .recibo,
+  .recibo * {
+    color: #000000 !important;
+    forced-color-adjust: none;
+  }
+}
+
+.label {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.labelPequena {
+  font-size: 7.2px;
+}
+
+.valor {
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-bottom: 1px solid #000000;
+  padding-bottom: 1px;
+}
+
+.valorCentro {
+  text-align: center;
+}
+
+/* Encabezado: logo a la izquierda, datos de la empresa centrados a la derecha. */
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.logo {
+  width: 76px;
+  height: auto;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.empresaInfo {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.empresaLinea {
+  margin: 0 0 2px;
+  font-weight: 700;
+  font-size: 9px;
+}
+
+.empresaLinea:first-child {
+  font-size: 9.8px;
+}
+
+/* "Remision [número]  Fecha [fecha]": el número va más grande que el resto. */
+.filaRemision {
+  display: grid;
+  grid-template-columns: 1.4fr 1.1fr 0.8fr 1fr;
+  align-items: end;
+  column-gap: 6px;
+  padding: 4px 0 6px;
+}
+
+.numero {
+  font-weight: 700;
+  font-size: 15px;
+  border-bottom: 1px solid #000000;
+  padding-bottom: 0;
+  line-height: 1.1;
+}
+
+.filaDoble {
+  display: grid;
+  grid-template-columns: 1.4fr 1.1fr 0.8fr 1fr;
+  align-items: end;
+  column-gap: 6px;
+  padding: 5px 0;
+}
+
+.filaSimple {
+  display: grid;
+  grid-template-columns: 1.4fr 3fr;
+  align-items: end;
+  column-gap: 6px;
+  padding: 5px 0;
+}
+
+.filaAlta {
+  align-items: end;
+  min-height: 30px;
+}
+
+.filaIdentificado {
+  display: grid;
+  grid-template-columns: 1.4fr 1.1fr 2.9fr;
+  align-items: end;
+  column-gap: 6px;
+  padding: 5px 0;
+}
+
+.valorAngosto {
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid #000000;
+}
+
+.valorAncho {
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid #000000;
+}
+
+.miniTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2px 0;
+  font-size: 7px;
+}
+
+.miniTable th,
+.miniTable td {
+  border-bottom: 1px solid #000000;
+  padding: 1px 3px;
+  text-align: left;
+  font-weight: 400;
+}
+
+.miniTable th {
+  font-weight: 700;
+}
+
+/* Gran espacio en blanco antes del bloque de firmas, como en la hoja. */
+.firmas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 12px;
+  margin-top: 35px;
+}
+
+.firma {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.firmaLinea {
+  width: 100%;
+  border-bottom: 1px solid #000000;
+  height: 13px;
+}
+
+.firmaCaption {
+  font-size: 8.5px;
+  margin: 1px 0 5px;
+}
+
+.firmaCampo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-bottom: 3px;
+}
+
+.firmaCampo .label {
+  font-size: 8.5px;
+  white-space: nowrap;
+}
+
+.firmaCampo .valor {
+  flex: 1;
+}

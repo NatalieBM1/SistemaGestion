@@ -1,0 +1,100 @@
+@import "@fontsource/inter/200.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "./tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Jerarquía tipográfica explícita para que h1-h4 se vean igual sin importar
+   en qué página/componente aparezcan — antes heredaban el tamaño por
+   defecto del navegador y cada página terminaba con un tamaño distinto. */
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  line-height: var(--leading-title);
+  font-weight: 600;
+}
+
+h1 {
+  font-size: var(--text-title);
+}
+
+h2 {
+  font-size: var(--text-subtitle);
+}
+
+h3 {
+  font-size: var(--text-body-lg);
+}
+
+h4 {
+  font-size: var(--text-body);
+}
+
+p {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* Datos alfanuméricos operativos: números de remisión, placas, facturas,
+   columnas numéricas/monetarias en tablas. */
+.font-mono-data {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+}
+
+/* Foco de teclado visible y consistente en toda la app (Paso 15.2) */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

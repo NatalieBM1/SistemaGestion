@@ -1,0 +1,100 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+}
+
+.label {
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.required {
+  margin-left: 2px;
+  color: var(--accent);
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+}
+
+.input {
+  height: 38px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  width: 100%;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.hasRightElement {
+  padding-right: 36px;
+}
+
+.rightElement {
+  position: absolute;
+  right: var(--space-2);
+  top: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+}
+
+.hasLeftElement {
+  padding-left: 40px;
+}
+
+.leftElement {
+  position: absolute;
+  left: var(--space-3);
+  top: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.input::placeholder {
+  color: var(--text-disabled);
+}
+
+.input:hover:not(:disabled):not(:focus) {
+  border-color: var(--border-hover);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+
+.input:disabled {
+  background: var(--bg-canvas);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.inputError {
+  border-color: var(--danger);
+}
+
+.inputError:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-bg);
+}
+
+.errorMessage {
+  font-size: var(--text-caption);
+  color: var(--danger);
+}
+
+.hint {
+  font-size: var(--text-caption);
+  color: var(--text-disabled);
+}

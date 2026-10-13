@@ -1,0 +1,86 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg-canvas);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.toolbar {
+  width: 100%;
+  max-width: 21.59cm;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+/* La hoja es tamaño Carta (21.59cm x 27.94cm), confirmado exportando la hoja
+   "Imprimir" del Excel real a PDF: la página resultante mide exactamente
+   612x792pt = 21.59x27.94cm. Los márgenes y el alto de cada copia están
+   medidos del mismo PDF (perfil de tinta por fila de la imagen exportada):
+   margen superior ~0.8cm, inferior ~0.5cm, laterales ~0.2cm (son los
+   márgenes de página reales del Excel), y cada copia mide ~13.1cm de alto,
+   con un espacio pequeño (~0.24cm) entre las dos filas de copias. */
+.hoja {
+  background: #ffffff;
+  width: 100%;
+  max-width: 21.59cm;
+  min-height: 27.94cm;
+  padding: 0.8cm 0.2cm 0.5cm;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.24cm;
+}
+
+.filaSuperior {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3cm;
+  height: 13.1cm;
+}
+
+.filaInferior {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 13.1cm;
+}
+
+.filaInferior > :global(.recibo) {
+  grid-column: 1;
+}
+
+@media print {
+  @page {
+    size: letter;
+    margin: 0.8cm 0.2cm 0.5cm;
+  }
+
+  .page {
+    min-height: 0;
+    padding: 0;
+    background: #ffffff;
+    display: block;
+  }
+
+  .toolbar {
+    display: none;
+  }
+
+  .hoja {
+    max-width: none;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    box-shadow: none;
+    margin: 0;
+  }
+
+  .filaSuperior,
+  .filaInferior {
+    height: 13.1cm;
+  }
+}
