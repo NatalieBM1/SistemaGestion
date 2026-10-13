@@ -19,7 +19,6 @@ services:
         sync: false   # fijar manualmente en el dashboard antes del primer deploy
       - key: CORS_ORIGINS
         value: https://sistemagestion-web.onrender.com
-        # ⚠️  Actualiza este valor con la URL real que Render asigne al frontend
 
   # ──────────────────────────────────────────────────────────────────────────
   # Frontend — React + Vite (Static Site)
@@ -33,7 +32,6 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://sistemagestion-api.onrender.com
-        # ⚠️  Actualiza este valor con la URL real que Render asigne al backend
     routes:
       - type: rewrite
         source: /*
