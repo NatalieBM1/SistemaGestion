@@ -14,6 +14,7 @@ import {
   Tag,
   Truck,
   User,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -290,9 +291,6 @@ export function RemisionForm() {
                 Imprimir
               </Button>
             )}
-            <Button type="button" variant="ghost" onClick={() => navigate("/remisiones")}>
-              {bloqueada ? "Volver" : "Cancelar"}
-            </Button>
             {!bloqueada && (
               <Button
                 type="submit"
@@ -304,6 +302,38 @@ export function RemisionForm() {
                 Guardar remisión
               </Button>
             )}
+            <button
+              type="button"
+              onClick={() => navigate("/remisiones")}
+              title={bloqueada ? "Volver a remisiones" : "Cancelar y volver"}
+              aria-label={bloqueada ? "Volver a remisiones" : "Cancelar y volver"}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                border: "1.5px solid var(--border)",
+                background: "transparent",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                transition: "background 0.15s, color 0.15s, border-color 0.15s",
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = "var(--danger-bg)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--danger)";
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--danger)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)";
+              }}
+            >
+              <X size={18} strokeWidth={2} />
+            </button>
           </>
         }
       />
