@@ -24,9 +24,43 @@
   font-size: 12.5px;
   font-weight: 500;
   color: var(--text-secondary);
+  background: var(--bg-surface);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid #d9e0f2;
   white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.thOrdenable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.thOrdenable:hover {
+  color: var(--accent);
+}
+
+.thOrdenable:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.flechaOrden {
+  font-size: 9px;
+  color: var(--accent);
+  width: 8px;
+  display: inline-block;
 }
 
 .table thead th.alignRight {
@@ -58,6 +92,20 @@
   background: var(--bg-canvas);
 }
 
+/* Fila seleccionada (ej. casillas de facturación múltiple). */
+.rowSelected td {
+  background: var(--accent-tint);
+}
+
+.rowSelected:hover td {
+  background: var(--accent-tint);
+}
+
+/* Fila que no se puede tocar (ej. ya facturada por completo). */
+.rowDisabled td {
+  opacity: 0.55;
+}
+
 /* Primera columna fija; sombra solo cuando la tabla ya se desplazó. */
 .stickyCol {
   position: sticky;
@@ -72,6 +120,10 @@
 
 .table tbody tr:hover td.stickyCol {
   background: var(--bg-canvas);
+}
+
+.rowSelected td.stickyCol {
+  background: var(--accent-tint);
 }
 
 .wrapper[data-scrolled="true"] .stickyCol {

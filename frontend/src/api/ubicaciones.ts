@@ -14,9 +14,13 @@ export interface Municipio {
   departamento_id: number;
 }
 
-export async function listDepartamentos(page: number, q: string): Promise<PaginatedResponse<Departamento>> {
+export async function listDepartamentos(
+  page: number,
+  q: string,
+  pageSize = 50,
+): Promise<PaginatedResponse<Departamento>> {
   const { data } = await apiClient.get<PaginatedResponse<Departamento>>("/api/ubicaciones/departamentos", {
-    params: { page, page_size: 50, q: q || undefined },
+    params: { page, page_size: pageSize, q: q || undefined },
   });
   return data;
 }
@@ -35,10 +39,11 @@ export async function listMunicipiosDeDepartamento(
   departamentoId: number,
   page: number,
   q: string,
+  pageSize = 50,
 ): Promise<PaginatedResponse<Municipio>> {
   const { data } = await apiClient.get<PaginatedResponse<Municipio>>(
     `/api/ubicaciones/departamentos/${departamentoId}/municipios`,
-    { params: { page, page_size: 50, q: q || undefined } },
+    { params: { page, page_size: pageSize, q: q || undefined } },
   );
   return data;
 }

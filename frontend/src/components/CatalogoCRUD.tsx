@@ -19,12 +19,17 @@ import {
   IconButton,
   Input,
   Modal,
+  SelectorFilasPorPagina,
   Table,
   type TableColumn,
+  guardarFilasPorPagina,
+  leerFilasPorPaginaGuardadas,
+  rangoRegistros,
   useToast,
 } from "./ui";
 import type { CatalogoConfig } from "../config/catalogos";
-import { canWrite } from "../lib/permissions";
+import { useOrdenamiento } from "../hooks/useOrdenamiento";
+import { hasPermission } from "../lib/permissions";
 import { useAuthStore } from "../store/authStore";
 import { usePageTitle } from "../store/pageTitleStore";
 import styles from "./CatalogoCRUD.module.css";
@@ -39,26 +44,40 @@ export function CatalogoCRUD({ config }: CatalogoCRUDProps) {
   usePageTitle(config.title);
 
   const user = useAuthStore((state) => state.user);
-  const puedeEscribir = canWrite(user);
+  // Catálogos tiene permisos separados: Operador solo puede crear, no
+  // editar ni eliminar (Administrador los tiene todos; Solo Consulta
+  // ninguno). Prefijos es más restrictivo y trae sus propios permisos
+  // (config.permisos) — solo Administrador. Ver backend/app/seed_auth.py.
+  const permisos = config.permisos ?? {
+    crear: "catalogos.crear",
+    editar: "catalogos.editar",
+    eliminar: "catalogos.eliminar",
+  };
+  const puedeCrear = hasPermission(user, permisos.crear);
+  const puedeEditar = hasPermission(user, permisos.editar);
+  const puedeEliminar = hasPermission(user, permisos.eliminar);
   const toast = useToast();
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => leerFilasPorPaginaGuardadas(`catalogo:${config.slug}`, 20));
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CatalogoItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CatalogoItem | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const { ordenamiento, alternar: alternarOrden } = useOrdenamiento();
 
   useEffect(() => {
     setPage(1);
     setSearch("");
   }, [config.slug]);
 
-  const queryKey = ["catalogo", config.slug, page, search];
-  const { data, isLoading } = useQuery({
+  const queryKey = ["catalogo", config.slug, page, pageSize, search, ordenamiento];
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey,
-    queryFn: () => listCatalogo(config.endpoint, page, search),
+    queryFn: () =>
+      listCatalogo(config.endpoint, page, search, pageSize, ordenamiento.campo ?? undefined, ordenamiento.sentido ?? undefined),
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["catalogo", config.slug] });
@@ -122,6 +141,7 @@ export function CatalogoCRUD({ config }: CatalogoCRUDProps) {
       key: column.key,
       header: column.header,
       monoData: column.monoData,
+      sortField: column.key,
       render: (row) => formatCellValue(row[column.key]),
     })),
     {
@@ -130,18 +150,16 @@ export function CatalogoCRUD({ config }: CatalogoCRUDProps) {
       align: "right",
       render: (row) => (
         <div style={{ display: "flex", gap: "var(--space-1)", justifyContent: "flex-end" }}>
-          <IconButton
-            label={puedeEscribir ? "Editar" : READ_ONLY_TITLE}
-            icon={<Pencil size={16} />}
-            onClick={() => openEditForm(row)}
-            disabled={!puedeEscribir}
-          />
-          <IconButton
-            label={puedeEscribir ? "Eliminar" : READ_ONLY_TITLE}
-            icon={<Trash2 size={16} />}
-            onClick={() => setDeleteTarget(row)}
-            disabled={!puedeEscribir}
-          />
+          {puedeEditar && (
+            <IconButton label="Editar" icon={<Pencil size={16} />} onClick={() => openEditForm(row)} />
+          )}
+          {puedeEliminar && (
+            <IconButton
+              label="Eliminar"
+              icon={<Trash2 size={16} />}
+              onClick={() => setDeleteTarget(row)}
+            />
+          )}
         </div>
       ),
     },
@@ -170,8 +188,8 @@ export function CatalogoCRUD({ config }: CatalogoCRUDProps) {
             variant="primary"
             leftIcon={<Plus size={16} />}
             onClick={openCreateForm}
-            disabled={!puedeEscribir}
-            title={puedeEscribir ? undefined : READ_ONLY_TITLE}
+            disabled={!puedeCrear}
+            title={puedeCrear ? undefined : READ_ONLY_TITLE}
             style={{ marginLeft: "auto" }}
           >
             Nuevo {config.singular}
@@ -179,7 +197,18 @@ export function CatalogoCRUD({ config }: CatalogoCRUDProps) {
         }
       />
 
-      {!isLoading && items.length === 0 ? (
+      {isError ? (
+        <EmptyState
+          icon={<Search size={32} strokeWidth={1.5} />}
+          title="No se pudo cargar el listado"
+          description="Hubo un problema al traer los datos. Intenta de nuevo."
+          action={
+            <Button variant="primary" onClick={() => refetch()}>
+              Reintentar
+            </Button>
+          }
+        />
+      ) : !isLoading && items.length === 0 ? (
         <EmptyState
           icon={<Search size={32} strokeWidth={1.5} />}
           title={`Sin resultados en ${config.title.toLowerCase()}`}
@@ -190,7 +219,7 @@ export function CatalogoCRUD({ config }: CatalogoCRUDProps) {
           }
           action={
             !search && (
-              <Button variant="primary" onClick={openCreateForm} disabled={!puedeEscribir}>
+              <Button variant="primary" onClick={openCreateForm} disabled={!puedeCrear}>
                 Nuevo {config.singular}
               </Button>
             )
@@ -198,12 +227,28 @@ export function CatalogoCRUD({ config }: CatalogoCRUDProps) {
         />
       ) : (
         <>
-          <Table columns={columns} data={items} getRowId={(row) => row.id} isLoading={isLoading} />
-          {data && data.total > data.page_size && (
+          <Table
+            columns={columns}
+            data={items}
+            getRowId={(row) => row.id}
+            isLoading={isLoading}
+            ordenamiento={ordenamiento}
+            onOrdenar={(campo) => {
+              alternarOrden(campo);
+              setPage(1);
+            }}
+          />
+          {data && (
             <div className={styles.pagination}>
-              <span>
-                Página {data.page} de {totalPages} · {data.total} registros
-              </span>
+              <span>{rangoRegistros(data.page, data.page_size, data.total)}</span>
+              <SelectorFilasPorPagina
+                value={pageSize}
+                onChange={(n) => {
+                  setPageSize(n);
+                  guardarFilasPorPagina(`catalogo:${config.slug}`, n);
+                  setPage(1);
+                }}
+              />
               <Button
                 variant="ghost"
                 onClick={() => setPage((current) => Math.max(1, current - 1))}

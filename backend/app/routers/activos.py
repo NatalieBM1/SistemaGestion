@@ -72,6 +72,9 @@ def _serializar_activo(session: Session, activo: Activo) -> ActivoRead:
     )
 
 
+COLUMNAS_ORDENABLES_ACTIVOS = {"placa", "tipo_activo", "clase", "bloqueado"}
+
+
 @router.get(
     "",
     response_model=PaginatedResponse[ActivoRead],
@@ -82,6 +85,8 @@ def listar_activos(
     page_size: int = Query(20, ge=1, le=100),
     q: str | None = Query(None, description="Búsqueda por placa"),
     tipo_activo: str | None = Query(None, description="Filtrar por tipo_activo"),
+    ordenar_por: str | None = Query(None),
+    sentido: str = Query("asc", pattern="^(asc|desc)$"),
     session: Session = Depends(get_session),
 ):
     statement = select(Activo)
@@ -90,6 +95,11 @@ def listar_activos(
     if tipo_activo:
         statement = statement.where(Activo.tipo_activo == tipo_activo)
     total = session.exec(select(func.count()).select_from(statement.subquery())).one()
+    if ordenar_por:
+        if ordenar_por not in COLUMNAS_ORDENABLES_ACTIVOS:
+            raise HTTPException(status_code=422, detail=f"No se puede ordenar activos por '{ordenar_por}'.")
+        columna = getattr(Activo, ordenar_por)
+        statement = statement.order_by(columna.desc() if sentido == "desc" else columna.asc())
     activos = session.exec(
         statement.offset((page - 1) * page_size).limit(page_size)
     ).all()

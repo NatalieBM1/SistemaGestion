@@ -140,6 +140,9 @@ class ProductoRemisionResponse(BaseModel):
 
 class CopiarRemisionRequest(BaseModel):
     copiar_productos: bool = False
+    # Obligatorio cuando el prefijo de la remisión original es manual
+    # (es_manual=True): no se puede autogenerar, hay que pedirlo.
+    numero_remision: str | None = None
 
 
 class CopiarRemisionResponse(BaseModel):

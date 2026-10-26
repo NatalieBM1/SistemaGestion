@@ -23,11 +23,16 @@ import {
   Input,
   Modal,
   PageHeader,
+  SelectorFilasPorPagina,
   Switch,
   Table,
   type TableColumn,
+  guardarFilasPorPagina,
+  leerFilasPorPaginaGuardadas,
+  rangoRegistros,
   useToast,
 } from "../../components/ui";
+import { useOrdenamiento } from "../../hooks/useOrdenamiento";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "../../components/CatalogoCRUD.module.css";
@@ -57,21 +62,23 @@ export function Usuarios() {
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => leerFilasPorPaginaGuardadas("usuarios", 20));
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<UsuarioAdmin | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [passwordTarget, setPasswordTarget] = useState<UsuarioAdmin | null>(null);
+  const { ordenamiento, alternar: alternarOrden } = useOrdenamiento();
 
   const { data: roles } = useQuery({
     queryKey: ["roles-lookup"],
     queryFn: async () => (await listRoles(1, "")).items,
   });
 
-  const queryKey = ["usuarios-admin", page, search];
-  const { data, isLoading } = useQuery({
+  const queryKey = ["usuarios-admin", page, pageSize, search, ordenamiento];
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey,
-    queryFn: () => listUsuarios(page, search),
+    queryFn: () => listUsuarios(page, search, pageSize, ordenamiento.campo ?? undefined, ordenamiento.sentido ?? undefined),
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["usuarios-admin"] });
@@ -156,8 +163,8 @@ export function Usuarios() {
   });
 
   const columns: TableColumn<UsuarioAdmin>[] = [
-    { key: "nombre", header: "Nombre", render: (u) => u.nombre },
-    { key: "email", header: "Email", monoData: true, render: (u) => u.email },
+    { key: "nombre", header: "Nombre", sortField: "nombre", render: (u) => u.nombre },
+    { key: "email", header: "Email", monoData: true, sortField: "email", render: (u) => u.email },
     {
       key: "roles",
       header: "Roles",
@@ -170,6 +177,7 @@ export function Usuarios() {
     {
       key: "estado",
       header: "Estado",
+      sortField: "activo",
       render: (u) => <EstadoPunto color={u.activo ? "success" : "danger"}>{u.activo ? "Activo" : "Inactivo"}</EstadoPunto>,
     },
     {
@@ -213,7 +221,18 @@ export function Usuarios() {
         }
       />
 
-      {!isLoading && items.length === 0 ? (
+      {isError ? (
+        <EmptyState
+          icon={<Search size={32} strokeWidth={1.5} />}
+          title="No se pudo cargar el listado"
+          description="Hubo un problema al traer los datos. Intenta de nuevo."
+          action={
+            <Button variant="primary" onClick={() => refetch()}>
+              Reintentar
+            </Button>
+          }
+        />
+      ) : !isLoading && items.length === 0 ? (
         <EmptyState
           icon={<Search size={32} strokeWidth={1.5} />}
           title="Sin resultados en usuarios"
@@ -226,12 +245,28 @@ export function Usuarios() {
         />
       ) : (
         <>
-          <Table columns={columns} data={items} getRowId={(row) => row.id} isLoading={isLoading} />
-          {data && data.total > data.page_size && (
+          <Table
+            columns={columns}
+            data={items}
+            getRowId={(row) => row.id}
+            isLoading={isLoading}
+            ordenamiento={ordenamiento}
+            onOrdenar={(campo) => {
+              alternarOrden(campo);
+              setPage(1);
+            }}
+          />
+          {data && (
             <div className={styles.pagination}>
-              <span>
-                Página {data.page} de {totalPages} · {data.total} registros
-              </span>
+              <span>{rangoRegistros(data.page, data.page_size, data.total)}</span>
+              <SelectorFilasPorPagina
+                value={pageSize}
+                onChange={(n) => {
+                  setPageSize(n);
+                  guardarFilasPorPagina("usuarios", n);
+                  setPage(1);
+                }}
+              />
               <Button variant="ghost" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
                 Anterior
               </Button>

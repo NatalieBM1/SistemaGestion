@@ -10,11 +10,11 @@ class Tercero(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     identificacion: str = Field(unique=True)
     nombre: str
-    direccion: str
-    municipio_id: int = Field(foreign_key="municipios.id")
-    email: str
-    telefono: str
-    regimen: str
+    direccion: Optional[str] = Field(default=None)
+    municipio_id: Optional[int] = Field(default=None, foreign_key="municipios.id")
+    email: Optional[str] = Field(default=None)
+    telefono: Optional[str] = Field(default=None)
+    regimen: Optional[str] = Field(default=None)
     tiene_licencia: Optional[bool] = Field(default=None)
     fecha_vencimiento_licencia: Optional[date] = Field(default=None)
     creado_en: datetime = Field(default_factory=datetime.utcnow)

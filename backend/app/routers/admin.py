@@ -135,11 +135,16 @@ def _verificar_nombre_rol_unico(
 # --- usuarios ---
 
 
+COLUMNAS_ORDENABLES_USUARIOS = {"nombre", "email", "activo"}
+
+
 @router.get("/usuarios", response_model=PaginatedResponse[UsuarioRead])
 def listar_usuarios(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     q: str | None = Query(None, description="Búsqueda por nombre o email"),
+    ordenar_por: str | None = Query(None),
+    sentido: str = Query("asc", pattern="^(asc|desc)$"),
     session: Session = Depends(get_session),
 ):
     statement = select(Usuario)
@@ -148,6 +153,11 @@ def listar_usuarios(
             or_(Usuario.nombre.ilike(f"%{q}%"), Usuario.email.ilike(f"%{q}%"))
         )
     total = session.exec(select(func.count()).select_from(statement.subquery())).one()
+    if ordenar_por:
+        if ordenar_por not in COLUMNAS_ORDENABLES_USUARIOS:
+            raise HTTPException(status_code=422, detail=f"No se puede ordenar usuarios por '{ordenar_por}'.")
+        columna = getattr(Usuario, ordenar_por)
+        statement = statement.order_by(columna.desc() if sentido == "desc" else columna.asc())
     usuarios = session.exec(
         statement.offset((page - 1) * page_size).limit(page_size)
     ).all()

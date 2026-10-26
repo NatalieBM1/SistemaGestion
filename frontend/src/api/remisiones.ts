@@ -67,6 +67,8 @@ export interface RemisionListParams {
   placa?: string;
   proyecto_id?: number;
   tercero_id?: number;
+  ordenar_por?: string;
+  sentido?: "asc" | "desc";
 }
 
 export async function listRemisiones(
@@ -126,9 +128,11 @@ export async function eliminarProductoRemision(
 export async function copiarRemision(
   remisionId: number,
   copiarProductos: boolean,
+  numeroRemision?: string,
 ): Promise<{ remision: RemisionDetalle; alerta_saldo_bajo: string | null }> {
   const { data } = await apiClient.post(`/api/remisiones/${remisionId}/copiar`, {
     copiar_productos: copiarProductos,
+    numero_remision: numeroRemision || undefined,
   });
   return data;
 }

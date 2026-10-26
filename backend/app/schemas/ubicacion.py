@@ -38,3 +38,7 @@ class MunicipioRead(BaseModel):
     codigo_dane: str
     nombre: str
     departamento_id: int
+    departamento_nombre: str | None = None
+    # "MUNICIPIO - DEPARTAMENTO", para distinguir municipios con el mismo
+    # nombre en departamentos distintos (ver selectores de origen/destino).
+    presentacion: str | None = None

@@ -24,6 +24,7 @@ def reporte_remisiones_general(
     proyecto_id: int | None = Query(None),
     vehiculo_id: int | None = Query(None),
     camabaja_id: int | None = Query(None),
+    estado_facturacion: str | None = Query(None),
     session: Session = Depends(get_session),
 ):
     buffer = svc.generar_reporte_general(
@@ -34,6 +35,7 @@ def reporte_remisiones_general(
         proyecto_id=proyecto_id,
         vehiculo_id=vehiculo_id,
         camabaja_id=camabaja_id,
+        estado_facturacion=estado_facturacion,
     )
     return StreamingResponse(
         buffer,
@@ -53,6 +55,7 @@ def reporte_remisiones_facturadas(
     proyecto_id: int | None = Query(None),
     vehiculo_id: int | None = Query(None),
     camabaja_id: int | None = Query(None),
+    estado_facturacion: str | None = Query(None),
     session: Session = Depends(get_session),
 ):
     buffer = svc.generar_reporte_facturadas(
@@ -63,6 +66,7 @@ def reporte_remisiones_facturadas(
         proyecto_id=proyecto_id,
         vehiculo_id=vehiculo_id,
         camabaja_id=camabaja_id,
+        estado_facturacion=estado_facturacion,
     )
     return StreamingResponse(
         buffer,

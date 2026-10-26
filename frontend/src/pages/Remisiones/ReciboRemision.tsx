@@ -95,10 +95,10 @@ export function ReciboRemision({
         <div className={styles.empresaInfo}>
           <p className={styles.empresaLinea}>{empresa.nombre}</p>
           <p className={styles.empresaLinea}>{empresa.nit}</p>
-          <p className={styles.empresaLinea}>{empresa.direccion}</p>
+          {empresa.direccion && <p className={styles.empresaLinea}>{empresa.direccion}</p>}
           {empresa.ciudad && <p className={styles.empresaLinea}>{empresa.ciudad}</p>}
           {empresa.email && <p className={styles.empresaLinea}>{empresa.email}</p>}
-          <p className={styles.empresaLinea}>{empresa.responsabilidad_iva}</p>
+          {empresa.responsabilidad_iva && <p className={styles.empresaLinea}>{empresa.responsabilidad_iva}</p>}
           {telefonoEmpresa && <p className={styles.empresaLinea}>{telefonoEmpresa}</p>}
           <p className={styles.empresaLinea}>{empresa.resolucion_habilitacion}</p>
         </div>

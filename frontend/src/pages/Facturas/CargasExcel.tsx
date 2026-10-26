@@ -51,7 +51,7 @@ export function CargasExcel() {
               <li>ID: id de la remisión a facturar.</li>
               <li>ES_PARCIAL: "S" o "N". Si es "N", factura el saldo total pendiente.</li>
               <li>VALOR_PARCIAL: obligatorio solo cuando ES_PARCIAL="S".</li>
-              <li>NUMERO_FACTURA: formato "F-1234" (una letra mayúscula, guion y dígitos).</li>
+              <li>NUMERO_FACTURA: formato "F-7-468" o "F-1234" (una letra mayúscula, guion, dígitos y opcionalmente otro guion y más dígitos).</li>
               <li>FECHA_FACTURA: formato dd/mm/aaaa.</li>
             </ul>
           }

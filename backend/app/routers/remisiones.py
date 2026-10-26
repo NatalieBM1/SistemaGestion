@@ -1,6 +1,8 @@
+import re
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from sqlalchemy import Integer, case, cast
 from sqlmodel import Session, func, or_, select
 
 from app.core.database import get_session
@@ -31,6 +33,29 @@ from app.services import remision_service as svc
 router = APIRouter(prefix="/api/remisiones", tags=["remisiones"])
 
 
+# El consecutivo se guarda con ceros a la izquierda (ej. "GTS-006525"),
+# pero en pantalla se muestra sin ellos (ver formatNumeroRemision en el
+# frontend). Para que buscar "6525", "GTS-6525" o "GTS-006525" encuentre
+# lo mismo, además del texto tal cual se busca también la versión con el
+# consecutivo rellenado a 6 dígitos (el mismo ancho que usa la
+# numeración automática).
+_PATRON_PREFIJO_CONSECUTIVO = re.compile(r"^([A-Za-z]+)-(\d+)$")
+
+
+def _patrones_busqueda_numero(texto: str) -> list[str]:
+    texto = texto.strip()
+    variantes = {texto}
+    coincide = _PATRON_PREFIJO_CONSECUTIVO.match(texto)
+    if coincide:
+        prefijo, digitos = coincide.groups()
+        # con ceros a la izquierda (formato que usa la numeración
+        # automática, ej. "GTS-006520")...
+        variantes.add(f"{prefijo}-{digitos.zfill(6)}")
+        # ...y sin ellos (formato del histórico importado, ej. "GTS-6520").
+        variantes.add(f"{prefijo}-{str(int(digitos))}")
+    return [f"%{v}%" for v in variantes]
+
+
 def _obtener_remision_o_404(session: Session, remision_id: int) -> Remision:
     remision = session.get(Remision, remision_id)
     if remision is None:
@@ -49,6 +74,50 @@ def _obtener_prefijo_o_404(session: Session, prefijo_id: int) -> Prefijo:
             detail=f"No se encontró el prefijo con id {prefijo_id}",
         )
     return prefijo
+
+
+COLUMNAS_ORDENABLES_REMISIONES = {
+    "numero_remision",
+    "fecha",
+    "cliente",
+    "estado",
+    "placa",
+}
+
+
+def _clausula_orden_remisiones(ordenar_por: str, sentido: str):
+    """Lista blanca explícita (no getattr libre): cada columna ordenable
+    tiene su propia expresión, porque varias no son una columna simple de
+    `remisiones` (cliente/placa vienen de otra tabla, numero_remision se
+    ordena por prefijo + consecutivo numérico aunque en pantalla no se
+    vean los ceros)."""
+    if ordenar_por not in COLUMNAS_ORDENABLES_REMISIONES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"No se puede ordenar remisiones por '{ordenar_por}'.",
+        )
+    desc = sentido == "desc"
+    if ordenar_por == "fecha":
+        return [Remision.fecha.desc() if desc else Remision.fecha.asc()]
+    if ordenar_por == "estado":
+        return [Remision.estado_facturacion.desc() if desc else Remision.estado_facturacion.asc()]
+    if ordenar_por == "cliente":
+        subq = select(Tercero.nombre).where(Tercero.id == Remision.cliente_id).scalar_subquery()
+        return [subq.desc() if desc else subq.asc()]
+    if ordenar_por == "placa":
+        subq = select(Activo.placa).where(Activo.id == Remision.vehiculo_id).scalar_subquery()
+        return [subq.desc() if desc else subq.asc()]
+    # numero_remision: por prefijo (texto) y luego por consecutivo numérico.
+    # El consecutivo es texto libre para prefijos manuales (puede no ser
+    # dígitos) — se castea solo cuando sí lo es, para no romper el ORDER BY.
+    prefijo_subq = select(Prefijo.codigo).where(Prefijo.id == Remision.prefijo_id).scalar_subquery()
+    consecutivo_numerico = case(
+        (Remision.consecutivo.op("~")(r"^\d+$"), cast(Remision.consecutivo, Integer)),
+        else_=0,
+    )
+    if desc:
+        return [prefijo_subq.desc(), consecutivo_numerico.desc()]
+    return [prefijo_subq.asc(), consecutivo_numerico.asc()]
 
 
 def _remision_ids_por_factura(texto: str):
@@ -77,6 +146,8 @@ def listar_remisiones(
     estado_facturacion: str | None = Query(None),
     factura: str | None = Query(None, description="Número de factura asociada a la remisión"),
     q: str | None = Query(None, description="Búsqueda general: número, cliente, placa o factura"),
+    ordenar_por: str | None = Query(None, description="numero_remision, fecha, cliente, estado o placa"),
+    sentido: str = Query("asc", pattern="^(asc|desc)$"),
     session: Session = Depends(get_session),
 ):
     statement = select(Remision)
@@ -85,7 +156,10 @@ def listar_remisiones(
     if hasta:
         statement = statement.where(Remision.fecha <= hasta)
     if numero_remision:
-        statement = statement.where(Remision.numero_remision.ilike(f"%{numero_remision}%"))
+        patrones = _patrones_busqueda_numero(numero_remision)
+        statement = statement.where(
+            or_(*[Remision.numero_remision.ilike(p) for p in patrones])
+        )
     if numero_orden_servicio:
         statement = statement.join(
             OrdenServicio, OrdenServicio.id == Remision.orden_servicio_id
@@ -106,9 +180,10 @@ def listar_remisiones(
         statement = statement.where(Remision.id.in_(_remision_ids_por_factura(factura)))
     if q:
         patron = f"%{q}%"
+        patrones_numero = _patrones_busqueda_numero(q)
         statement = statement.where(
             or_(
-                Remision.numero_remision.ilike(patron),
+                *[Remision.numero_remision.ilike(p) for p in patrones_numero],
                 Remision.cliente_id.in_(select(Tercero.id).where(Tercero.nombre.ilike(patron))),
                 Remision.vehiculo_id.in_(select(Activo.id).where(Activo.placa.ilike(patron))),
                 Remision.id.in_(_remision_ids_por_factura(q)),
@@ -116,8 +191,13 @@ def listar_remisiones(
         )
 
     total = session.exec(select(func.count()).select_from(statement.subquery())).one()
+    orden = (
+        _clausula_orden_remisiones(ordenar_por, sentido)
+        if ordenar_por
+        else [Remision.fecha.desc(), Remision.id.desc()]
+    )
     remisiones = session.exec(
-        statement.order_by(Remision.fecha.desc(), Remision.id.desc())
+        statement.order_by(*orden)
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()
@@ -297,7 +377,9 @@ def copiar_remision(
 ):
     original = _obtener_remision_o_404(session, remision_id)
     prefijo = _obtener_prefijo_o_404(session, original.prefijo_id)
-    numero_remision, consecutivo = svc.generar_numero_remision_automatico(session, prefijo)
+    numero_remision, consecutivo = svc.resolver_numero_remision(
+        session, payload.numero_remision, prefijo
+    )
 
     nueva = Remision(
         numero_remision=numero_remision,

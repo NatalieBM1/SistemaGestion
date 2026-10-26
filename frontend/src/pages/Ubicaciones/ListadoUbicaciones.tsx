@@ -13,7 +13,20 @@ import {
   type Departamento,
   type Municipio,
 } from "../../api/ubicaciones";
-import { Button, EmptyState, FormGrid, IconButton, Input, Modal, PageHeader, useToast } from "../../components/ui";
+import {
+  Button,
+  EmptyState,
+  FormGrid,
+  IconButton,
+  Input,
+  Modal,
+  PageHeader,
+  SelectorFilasPorPagina,
+  guardarFilasPorPagina,
+  leerFilasPorPaginaGuardadas,
+  rangoRegistros,
+  useToast,
+} from "../../components/ui";
 import { canWrite } from "../../lib/permissions";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
@@ -43,6 +56,11 @@ export function ListadoUbicaciones() {
   const [selectedDepto, setSelectedDepto] = useState<Departamento | null>(null);
   const [searchMunicipio, setSearchMunicipio] = useState("");
 
+  const [deptoPage, setDeptoPage] = useState(1);
+  const [deptoPageSize, setDeptoPageSize] = useState(() => leerFilasPorPaginaGuardadas("ubicaciones:departamentos", 50));
+  const [municipioPage, setMunicipioPage] = useState(1);
+  const [municipioPageSize, setMunicipioPageSize] = useState(() => leerFilasPorPaginaGuardadas("ubicaciones:municipios", 50));
+
   const [deptoFormOpen, setDeptoFormOpen] = useState(false);
   const [editingDepto, setEditingDepto] = useState<Departamento | null>(null);
   const [deptoFormError, setDeptoFormError] = useState<string | null>(null);
@@ -51,14 +69,19 @@ export function ListadoUbicaciones() {
   const [editingMunicipio, setEditingMunicipio] = useState<Municipio | null>(null);
   const [municipioFormError, setMunicipioFormError] = useState<string | null>(null);
 
-  const { data: departamentos, isLoading: cargandoDeptos } = useQuery({
-    queryKey: ["departamentos", searchDepto],
-    queryFn: () => listDepartamentos(1, searchDepto),
+  const { data: departamentos, isLoading: cargandoDeptos, isError: errorDeptos, refetch: refetchDeptos } = useQuery({
+    queryKey: ["departamentos", deptoPage, deptoPageSize, searchDepto],
+    queryFn: () => listDepartamentos(deptoPage, searchDepto, deptoPageSize),
   });
 
-  const { data: municipios, isLoading: cargandoMunicipios } = useQuery({
-    queryKey: ["municipios-de-departamento", selectedDepto?.id, searchMunicipio],
-    queryFn: () => listMunicipiosDeDepartamento(selectedDepto!.id, 1, searchMunicipio),
+  const {
+    data: municipios,
+    isLoading: cargandoMunicipios,
+    isError: errorMunicipios,
+    refetch: refetchMunicipios,
+  } = useQuery({
+    queryKey: ["municipios-de-departamento", selectedDepto?.id, municipioPage, municipioPageSize, searchMunicipio],
+    queryFn: () => listMunicipiosDeDepartamento(selectedDepto!.id, municipioPage, searchMunicipio, municipioPageSize),
     enabled: selectedDepto != null,
   });
 
@@ -141,12 +164,28 @@ export function ListadoUbicaciones() {
           <Input
             placeholder="Buscar departamento…"
             value={searchDepto}
-            onChange={(e) => setSearchDepto(e.target.value)}
+            onChange={(e) => {
+              setSearchDepto(e.target.value);
+              setDeptoPage(1);
+            }}
             aria-label="Buscar departamento"
           />
         </div>
         <div className={styles.list}>
-          {!cargandoDeptos && (departamentos?.items.length ?? 0) === 0 && (
+          {errorDeptos && (
+            <div style={{ padding: "var(--space-4)" }}>
+              <EmptyState
+                title="No se pudo cargar"
+                description="Hubo un problema al traer los departamentos."
+                action={
+                  <Button variant="primary" onClick={() => refetchDeptos()}>
+                    Reintentar
+                  </Button>
+                }
+              />
+            </div>
+          )}
+          {!errorDeptos && !cargandoDeptos && (departamentos?.items.length ?? 0) === 0 && (
             <div style={{ padding: "var(--space-4)" }}>
               <EmptyState title="Sin departamentos" description="No hay departamentos que coincidan." />
             </div>
@@ -159,6 +198,7 @@ export function ListadoUbicaciones() {
               onClick={() => {
                 setSelectedDepto(d);
                 setSearchMunicipio("");
+                setMunicipioPage(1);
               }}
             >
               <span>{d.nombre}</span>
@@ -176,6 +216,37 @@ export function ListadoUbicaciones() {
             </button>
           ))}
         </div>
+        {departamentos && (
+          <div className={crudStyles.pagination}>
+            <span>{rangoRegistros(departamentos.page, departamentos.page_size, departamentos.total)}</span>
+            <SelectorFilasPorPagina
+              value={deptoPageSize}
+              onChange={(n) => {
+                setDeptoPageSize(n);
+                guardarFilasPorPagina("ubicaciones:departamentos", n);
+                setDeptoPage(1);
+              }}
+            />
+            <Button
+              variant="ghost"
+              onClick={() => setDeptoPage((p) => Math.max(1, p - 1))}
+              disabled={deptoPage <= 1}
+            >
+              Anterior
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() =>
+                setDeptoPage((p) =>
+                  Math.min(Math.max(1, Math.ceil(departamentos.total / departamentos.page_size)), p + 1),
+                )
+              }
+              disabled={deptoPage >= Math.max(1, Math.ceil(departamentos.total / departamentos.page_size))}
+            >
+              Siguiente
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className={styles.panel}>
@@ -210,12 +281,28 @@ export function ListadoUbicaciones() {
               <Input
                 placeholder="Buscar municipio…"
                 value={searchMunicipio}
-                onChange={(e) => setSearchMunicipio(e.target.value)}
+                onChange={(e) => {
+                  setSearchMunicipio(e.target.value);
+                  setMunicipioPage(1);
+                }}
                 aria-label="Buscar municipio"
               />
             </div>
             <div className={styles.list}>
-              {!cargandoMunicipios && (municipios?.items.length ?? 0) === 0 && (
+              {errorMunicipios && (
+                <div style={{ padding: "var(--space-4)" }}>
+                  <EmptyState
+                    title="No se pudo cargar"
+                    description="Hubo un problema al traer los municipios."
+                    action={
+                      <Button variant="primary" onClick={() => refetchMunicipios()}>
+                        Reintentar
+                      </Button>
+                    }
+                  />
+                </div>
+              )}
+              {!errorMunicipios && !cargandoMunicipios && (municipios?.items.length ?? 0) === 0 && (
                 <div style={{ padding: "var(--space-4)" }}>
                   <EmptyState title="Sin municipios" description="Este departamento no tiene municipios registrados." />
                 </div>
@@ -236,6 +323,37 @@ export function ListadoUbicaciones() {
                 </div>
               ))}
             </div>
+            {municipios && (
+              <div className={crudStyles.pagination}>
+                <span>{rangoRegistros(municipios.page, municipios.page_size, municipios.total)}</span>
+                <SelectorFilasPorPagina
+                  value={municipioPageSize}
+                  onChange={(n) => {
+                    setMunicipioPageSize(n);
+                    guardarFilasPorPagina("ubicaciones:municipios", n);
+                    setMunicipioPage(1);
+                  }}
+                />
+                <Button
+                  variant="ghost"
+                  onClick={() => setMunicipioPage((p) => Math.max(1, p - 1))}
+                  disabled={municipioPage <= 1}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() =>
+                    setMunicipioPage((p) =>
+                      Math.min(Math.max(1, Math.ceil(municipios.total / municipios.page_size)), p + 1),
+                    )
+                  }
+                  disabled={municipioPage >= Math.max(1, Math.ceil(municipios.total / municipios.page_size))}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            )}
           </>
         )}
       </div>

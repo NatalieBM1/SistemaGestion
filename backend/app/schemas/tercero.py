@@ -6,11 +6,11 @@ from pydantic import BaseModel, ConfigDict
 class TerceroCreate(BaseModel):
     identificacion: str
     nombre: str
-    direccion: str
-    municipio_id: int
-    email: str
-    telefono: str
-    regimen: str
+    direccion: str | None = None
+    municipio_id: int | None = None
+    email: str | None = None
+    telefono: str | None = None
+    regimen: str | None = None
     tiene_licencia: bool | None = None
     fecha_vencimiento_licencia: date | None = None
 
@@ -33,12 +33,12 @@ class TerceroRead(BaseModel):
     id: int
     identificacion: str
     nombre: str
-    direccion: str
-    municipio_id: int
+    direccion: str | None
+    municipio_id: int | None
     municipio_nombre: str | None = None
-    email: str
-    telefono: str
-    regimen: str
+    email: str | None
+    telefono: str | None
+    regimen: str | None
     tiene_licencia: bool | None
     fecha_vencimiento_licencia: date | None
     creado_en: datetime

@@ -16,6 +16,7 @@ from app.core.errors import flush_or_409
 from app.models.auditoria import Auditoria
 from app.models.facturacion import Factura, RemisionFacturacion
 from app.models.remision import Remision, RemisionProducto
+from app.models.tercero import Tercero
 from app.schemas.facturacion import (
     FacturaRead,
     RemisionFacturacionHistorialRead,
@@ -23,7 +24,11 @@ from app.schemas.facturacion import (
     ResumenFacturasRead,
 )
 
-NUMERO_FACTURA_REGEX = re.compile(r"^[A-Z]-\d+$")
+# Acepta el formato histórico ("F-1234": letra, guion, dígitos) y el
+# formato real vigente del cliente ("F-7-468": letra, guion, dígitos,
+# guion, dígitos) — nunca se invalidan ni se tocan las facturas ya
+# cargadas con el formato corto.
+NUMERO_FACTURA_REGEX = re.compile(r"^[A-Z]-\d+(-\d+)?$")
 
 
 # --- valores base ---
@@ -83,7 +88,8 @@ def validar_formato_numero_factura(numero_factura: str) -> None:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=(
                 f"numero_factura '{numero_factura}' no cumple el formato esperado "
-                "(ej. 'F-1234'): una letra mayúscula, un guion y dígitos."
+                "(ej. 'F-7-468' o 'F-1234'): una letra mayúscula, guion, dígitos, "
+                "y opcionalmente otro guion y más dígitos."
             ),
         )
 
@@ -228,6 +234,293 @@ def facturar_remision(
     return remision_facturacion
 
 
+def _validar_seleccion_para_facturar_multiple(
+    session: Session, remision_ids: list[int]
+) -> tuple[list[Remision], list[dict[str, Any]], int | None]:
+    """Valida la selección de remisiones para facturar en bloque, sin
+    escribir nada. Devuelve (remisiones_validas, errores_por_remision,
+    cliente_id_comun). Si hay algún error (incluido cliente distinto),
+    `remisiones_validas` queda vacía — es todo o nada."""
+    if not remision_ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Selecciona al menos una remisión.",
+        )
+
+    remisiones: list[Remision] = []
+    errores: list[dict[str, Any]] = []
+    for rid in remision_ids:
+        remision = session.get(Remision, rid)
+        if remision is None:
+            errores.append({"remision_id": rid, "numero_remision": None, "motivo": "No existe."})
+            continue
+        remisiones.append(remision)
+
+    if not remisiones:
+        return [], errores, None
+
+    clientes_distintos = {r.cliente_id for r in remisiones}
+    if len(clientes_distintos) > 1:
+        # Cliente de referencia: el de la primera remisión seleccionada.
+        # Con clientes distintos no se factura nada; se marca cada
+        # remisión según si coincide o no con esa referencia, para que
+        # quede claro cuál(es) sobran de la selección.
+        cliente_referencia = remisiones[0].cliente_id
+        for r in remisiones:
+            motivo = (
+                "No se facturó: hay remisiones de otro cliente en la selección."
+                if r.cliente_id == cliente_referencia
+                else "Es de un cliente distinto al de las demás remisiones seleccionadas."
+            )
+            errores.append({"remision_id": r.id, "numero_remision": r.numero_remision, "motivo": motivo})
+        return [], errores, None
+
+    cliente_id = remisiones[0].cliente_id
+
+    for r in remisiones:
+        if r.estado_facturacion == "FACTURADA":
+            errores.append(
+                {
+                    "remision_id": r.id,
+                    "numero_remision": r.numero_remision,
+                    "motivo": "Ya está FACTURADA en su totalidad.",
+                }
+            )
+            continue
+        valor_total = calcular_valor_total_remision(session, r.id)
+        if valor_total <= 0:
+            errores.append(
+                {
+                    "remision_id": r.id,
+                    "numero_remision": r.numero_remision,
+                    "motivo": "No tiene productos; no hay nada que facturar.",
+                }
+            )
+
+    if errores:
+        return [], errores, None
+
+    return remisiones, [], cliente_id
+
+
+def resumen_seleccion_para_facturar(
+    session: Session, remision_ids: list[int]
+) -> dict[str, Any]:
+    """Vista previa (no escribe nada): cuántas remisiones se pueden
+    facturar juntas, el valor total, y el motivo de cada una que no se
+    pueda."""
+    remisiones_validas, errores, cliente_id = _validar_seleccion_para_facturar_multiple(
+        session, remision_ids
+    )
+    cliente_nombre = None
+    items: list[dict[str, Any]] = []
+    valor_total = Decimal(0)
+
+    if remisiones_validas:
+        cliente = session.get(Tercero, cliente_id)
+        cliente_nombre = cliente.nombre if cliente else None
+        for r in remisiones_validas:
+            saldo = calcular_valor_total_remision(session, r.id) - calcular_valor_facturado_activo(
+                session, r.id
+            )
+            valor_total += saldo
+            items.append(
+                {
+                    "remision_id": r.id,
+                    "numero_remision": r.numero_remision,
+                    "saldo_pendiente": saldo,
+                    "motivo_error": None,
+                }
+            )
+    else:
+        items = [
+            {
+                "remision_id": e["remision_id"],
+                "numero_remision": e.get("numero_remision"),
+                "saldo_pendiente": None,
+                "motivo_error": e["motivo"],
+            }
+            for e in errores
+        ]
+
+    return {
+        "puede_facturar": bool(remisiones_validas) and not errores,
+        "cliente_id": cliente_id if remisiones_validas else None,
+        "cliente_nombre": cliente_nombre,
+        "cantidad_remisiones": len(remisiones_validas),
+        "valor_total": valor_total,
+        "items": items,
+    }
+
+
+def facturar_multiples_remisiones(
+    session: Session,
+    *,
+    remision_ids: list[int],
+    numero_factura: str,
+    fecha_factura: date,
+    usuario_id: int | None,
+) -> dict[str, Any]:
+    """Registra UNA factura para varias remisiones del mismo cliente, cada
+    una por su saldo pendiente (tipo TOTAL). Todo o nada: si cualquier
+    remisión no se puede facturar, no se escribe ninguna."""
+    validar_formato_numero_factura(numero_factura)
+
+    remisiones_validas, errores, _ = _validar_seleccion_para_facturar_multiple(
+        session, remision_ids
+    )
+    if errores or not remisiones_validas:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"mensaje": "No se facturó ninguna remisión.", "errores": errores},
+        )
+
+    valor_total = Decimal(0)
+    for remision in remisiones_validas:
+        registro = facturar_remision(
+            session,
+            remision=remision,
+            numero_factura=numero_factura,
+            fecha_factura=fecha_factura,
+            tipo="TOTAL",
+            valor_facturado_input=None,
+            usuario_id=usuario_id,
+        )
+        valor_total += registro.valor_facturado
+
+    return {
+        "numero_factura": numero_factura,
+        "cantidad_remisiones": len(remisiones_validas),
+        "valor_total": valor_total,
+        "remisiones_ids": [r.id for r in remisiones_validas],
+    }
+
+
+def agregar_remisiones_a_factura(
+    session: Session,
+    *,
+    numero_factura: str,
+    remision_ids: list[int],
+    usuario_id: int | None,
+) -> dict[str, Any]:
+    """Agrega remisiones a una factura YA EXISTENTE (cada una por su saldo
+    pendiente, tipo TOTAL). Todo o nada: valida mismo cliente de la
+    factura, que no estén ya FACTURADA ni ya en esta factura."""
+    factura = session.exec(
+        select(Factura).where(Factura.numero_factura == numero_factura)
+    ).first()
+    if factura is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No se encontró ninguna factura con numero_factura '{numero_factura}'.",
+        )
+    if not remision_ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Selecciona al menos una remisión.",
+        )
+
+    activas_existentes = session.exec(
+        select(RemisionFacturacion).where(
+            RemisionFacturacion.factura_id == factura.id,
+            RemisionFacturacion.anulada.is_(False),
+        )
+    ).all()
+    remisiones_ya_en_factura = {r.remision_id for r in activas_existentes}
+    cliente_factura_id: int | None = None
+    if activas_existentes:
+        primera = session.get(Remision, activas_existentes[0].remision_id)
+        cliente_factura_id = primera.cliente_id if primera else None
+
+    remisiones: list[Remision] = []
+    errores: list[dict[str, Any]] = []
+    for rid in remision_ids:
+        remision = session.get(Remision, rid)
+        if remision is None:
+            errores.append({"remision_id": rid, "numero_remision": None, "motivo": "No existe."})
+            continue
+        if remision.id in remisiones_ya_en_factura:
+            errores.append(
+                {"remision_id": remision.id, "numero_remision": remision.numero_remision, "motivo": "Ya está en esta factura."}
+            )
+            continue
+        if remision.estado_facturacion == "FACTURADA":
+            errores.append(
+                {"remision_id": remision.id, "numero_remision": remision.numero_remision, "motivo": "Ya está FACTURADA en su totalidad."}
+            )
+            continue
+        if cliente_factura_id is not None and remision.cliente_id != cliente_factura_id:
+            errores.append(
+                {"remision_id": remision.id, "numero_remision": remision.numero_remision, "motivo": "Es de un cliente distinto al de la factura."}
+            )
+            continue
+        valor_total = calcular_valor_total_remision(session, remision.id)
+        if valor_total <= 0:
+            errores.append(
+                {"remision_id": remision.id, "numero_remision": remision.numero_remision, "motivo": "No tiene productos; no hay nada que facturar."}
+            )
+            continue
+        remisiones.append(remision)
+        if cliente_factura_id is None:
+            cliente_factura_id = remision.cliente_id
+
+    if errores:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"mensaje": "No se agregó ninguna remisión.", "errores": errores},
+        )
+
+    valor_agregado = Decimal(0)
+    for remision in remisiones:
+        registro = facturar_remision(
+            session,
+            remision=remision,
+            numero_factura=numero_factura,
+            fecha_factura=factura.fecha_factura,
+            tipo="TOTAL",
+            valor_facturado_input=None,
+            usuario_id=usuario_id,
+        )
+        valor_agregado += registro.valor_facturado
+
+    return {
+        "numero_factura": numero_factura,
+        "remisiones_agregadas": len(remisiones),
+        "valor_agregado": valor_agregado,
+        "remisiones_ids": [r.id for r in remisiones],
+    }
+
+
+def quitar_remision_de_factura(
+    session: Session,
+    *,
+    numero_factura: str,
+    remision_id: int,
+    usuario_id: int | None,
+) -> None:
+    factura = session.exec(
+        select(Factura).where(Factura.numero_factura == numero_factura)
+    ).first()
+    if factura is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No se encontró ninguna factura con numero_factura '{numero_factura}'.",
+        )
+    registro = session.exec(
+        select(RemisionFacturacion).where(
+            RemisionFacturacion.factura_id == factura.id,
+            RemisionFacturacion.remision_id == remision_id,
+            RemisionFacturacion.anulada.is_(False),
+        )
+    ).first()
+    if registro is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"La remisión {remision_id} no está activa en la factura '{numero_factura}'.",
+        )
+    anular_facturacion(session, registro, usuario_id=usuario_id)
+
+
 def anular_facturacion(
     session: Session,
     remision_facturacion: RemisionFacturacion,
@@ -347,10 +640,13 @@ def serializar_remision_facturacion(
     session: Session, registro: RemisionFacturacion
 ) -> RemisionFacturacionRead:
     remision = session.get(Remision, registro.remision_id)
+    cliente = session.get(Tercero, remision.cliente_id) if remision else None
     return RemisionFacturacionRead(
         id=registro.id,
         remision_id=registro.remision_id,
         numero_remision=remision.numero_remision if remision else None,
+        cliente_id=remision.cliente_id if remision else None,
+        cliente_nombre=cliente.nombre if cliente else None,
         tipo_facturacion=registro.tipo_facturacion,
         valor_facturado=registro.valor_facturado,
         anulada=registro.anulada,

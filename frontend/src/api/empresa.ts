@@ -3,11 +3,11 @@ import { apiClient } from "./client";
 export interface Empresa {
   nombre: string;
   nit: string;
-  direccion: string;
+  direccion: string | null;
   telefono: string | null;
   email: string | null;
   ciudad: string | null;
-  responsabilidad_iva: string;
+  responsabilidad_iva: string | null;
   resolucion_habilitacion: string;
 }
 

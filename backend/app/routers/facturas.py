@@ -14,7 +14,11 @@ from app.schemas.common import PaginatedResponse
 from app.schemas.facturacion import (
     ActualizarFacturaRequest,
     ActualizarFacturaResponse,
+    AgregarRemisionesFacturaRequest,
+    AgregarRemisionesFacturaResponse,
     CargaExcelResponse,
+    FacturarMultiplesRequest,
+    FacturarMultiplesResponse,
     FacturaRead,
     FacturarRemisionRequest,
     FacturarRemisionResponse,
@@ -22,6 +26,7 @@ from app.schemas.facturacion import (
     RemisionFacturacionRead,
     ResumenFacturacionRemisionRead,
     ResumenFacturasRead,
+    ResumenSeleccionRead,
 )
 from app.services import facturacion_excel_service as excel_svc
 from app.services import facturacion_service as svc
@@ -79,6 +84,40 @@ def facturar_remision(
         valor_facturado_total=valor_facturado_total,
         saldo_pendiente=valor_total - valor_facturado_total,
     )
+
+
+@router.post(
+    "/api/facturas/facturar-multiples/resumen",
+    response_model=ResumenSeleccionRead,
+    dependencies=[Depends(require_permission("facturas.escribir"))],
+)
+def resumen_facturar_multiples(
+    remision_ids: list[int],
+    session: Session = Depends(get_session),
+):
+    return svc.resumen_seleccion_para_facturar(session, remision_ids)
+
+
+@router.post(
+    "/api/facturas/facturar-multiples",
+    response_model=FacturarMultiplesResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("facturas.escribir"))],
+)
+def facturar_multiples(
+    payload: FacturarMultiplesRequest,
+    usuario: Usuario = Depends(get_current_active_user),
+    session: Session = Depends(get_session),
+):
+    resultado = svc.facturar_multiples_remisiones(
+        session,
+        remision_ids=payload.remision_ids,
+        numero_factura=payload.numero_factura,
+        fecha_factura=payload.fecha_factura,
+        usuario_id=usuario.id,
+    )
+    commit_or_409(session)
+    return resultado
 
 
 @router.delete(
@@ -274,6 +313,9 @@ async def actualizar_por_excel(
 # --- consulta ---
 
 
+COLUMNAS_ORDENABLES_FACTURAS = {"numero_factura", "fecha_factura"}
+
+
 @router.get(
     "/api/facturas",
     response_model=PaginatedResponse[FacturaRead],
@@ -285,6 +327,8 @@ def listar_facturas(
     desde: date | None = Query(None),
     hasta: date | None = Query(None),
     numero_factura: str | None = Query(None),
+    ordenar_por: str | None = Query(None),
+    sentido: str = Query("asc", pattern="^(asc|desc)$"),
     session: Session = Depends(get_session),
 ):
     statement = select(Factura)
@@ -296,8 +340,15 @@ def listar_facturas(
         statement = statement.where(Factura.numero_factura.ilike(f"%{numero_factura}%"))
 
     total = session.exec(select(func.count()).select_from(statement.subquery())).one()
+    if ordenar_por:
+        if ordenar_por not in COLUMNAS_ORDENABLES_FACTURAS:
+            raise HTTPException(status_code=422, detail=f"No se puede ordenar facturas por '{ordenar_por}'.")
+        columna = getattr(Factura, ordenar_por)
+        orden = columna.desc() if sentido == "desc" else columna.asc()
+    else:
+        orden = Factura.fecha_factura.desc()
     facturas = session.exec(
-        statement.order_by(Factura.fecha_factura.desc())
+        statement.order_by(orden)
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()
@@ -336,3 +387,45 @@ def listar_remisiones_de_factura(numero_factura: str, session: Session = Depends
         select(RemisionFacturacion).where(RemisionFacturacion.factura_id == factura.id)
     ).all()
     return [svc.serializar_remision_facturacion(session, r) for r in registros]
+
+
+@router.post(
+    "/api/facturas/{numero_factura}/remisiones",
+    response_model=AgregarRemisionesFacturaResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("facturas.escribir"))],
+)
+def agregar_remisiones_a_factura(
+    numero_factura: str,
+    payload: AgregarRemisionesFacturaRequest,
+    usuario: Usuario = Depends(get_current_active_user),
+    session: Session = Depends(get_session),
+):
+    resultado = svc.agregar_remisiones_a_factura(
+        session,
+        numero_factura=numero_factura,
+        remision_ids=payload.remision_ids,
+        usuario_id=usuario.id,
+    )
+    commit_or_409(session)
+    return resultado
+
+
+@router.delete(
+    "/api/facturas/{numero_factura}/remisiones/{remision_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("facturas.escribir"))],
+)
+def quitar_remision_de_factura(
+    numero_factura: str,
+    remision_id: int,
+    usuario: Usuario = Depends(get_current_active_user),
+    session: Session = Depends(get_session),
+):
+    svc.quitar_remision_de_factura(
+        session,
+        numero_factura=numero_factura,
+        remision_id=remision_id,
+        usuario_id=usuario.id,
+    )
+    commit_or_409(session)

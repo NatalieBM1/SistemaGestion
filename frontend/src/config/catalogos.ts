@@ -22,6 +22,10 @@ export interface CatalogoConfig {
   searchPlaceholder: string;
   fields: CatalogoFieldConfig[];
   columns: CatalogoColumnConfig[];
+  /** Por defecto los 3 permisos son "catalogos.crear"/"editar"/"eliminar".
+   * Prefijos es más restrictivo (solo Administrador, ni siquiera Operador
+   * puede crear) y usa "prefijos.administrar" para las tres acciones. */
+  permisos?: { crear: string; editar: string; eliminar: string };
 }
 
 export const CATALOGOS: Record<string, CatalogoConfig> = {
@@ -41,6 +45,11 @@ export const CATALOGOS: Record<string, CatalogoConfig> = {
       { key: "consecutivo_actual", header: "Consecutivo actual" },
       { key: "es_manual", header: "Es manual" },
     ],
+    permisos: {
+      crear: "prefijos.administrar",
+      editar: "prefijos.administrar",
+      eliminar: "prefijos.administrar",
+    },
   },
   formas_pago: {
     slug: "formas_pago",

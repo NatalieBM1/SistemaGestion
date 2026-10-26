@@ -22,10 +22,15 @@ import {
   Input,
   Modal,
   PageHeader,
+  SelectorFilasPorPagina,
   Table,
   type TableColumn,
+  guardarFilasPorPagina,
+  leerFilasPorPaginaGuardadas,
+  rangoRegistros,
   useToast,
 } from "../../components/ui";
+import { useOrdenamiento } from "../../hooks/useOrdenamiento";
 import { canWrite } from "../../lib/permissions";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
@@ -57,16 +62,25 @@ export function ListadoActivos() {
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => leerFilasPorPaginaGuardadas("activos", 20));
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Activo | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [bloqueoTarget, setBloqueoTarget] = useState<Activo | null>(null);
+  const { ordenamiento, alternar: alternarOrden } = useOrdenamiento();
 
-  const queryKey = ["activos", page, search];
-  const { data, isLoading } = useQuery({
+  const queryKey = ["activos", page, pageSize, search, ordenamiento];
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey,
-    queryFn: () => listActivos({ page, q: search || undefined }),
+    queryFn: () =>
+      listActivos({
+        page,
+        page_size: pageSize,
+        q: search || undefined,
+        ordenar_por: ordenamiento.campo ?? undefined,
+        sentido: ordenamiento.sentido ?? undefined,
+      }),
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["activos"] });
@@ -133,13 +147,14 @@ export function ListadoActivos() {
   });
 
   const columns: TableColumn<Activo>[] = [
-    { key: "placa", header: "Placa", monoData: true, render: (a) => a.placa },
-    { key: "tipo_activo", header: "Tipo", render: (a) => a.tipo_activo },
-    { key: "clase", header: "Clase", render: (a) => a.clase },
+    { key: "placa", header: "Placa", monoData: true, sortField: "placa", render: (a) => a.placa },
+    { key: "tipo_activo", header: "Tipo", sortField: "tipo_activo", render: (a) => a.tipo_activo },
+    { key: "clase", header: "Clase", sortField: "clase", render: (a) => a.clase },
     { key: "empresa", header: "Empresa", render: (a) => a.empresa_nombre ?? "—" },
     {
       key: "estado",
       header: "Estado",
+      sortField: "bloqueado",
       render: (a) => <EstadoPunto color={a.bloqueado ? "danger" : "success"}>{a.bloqueado ? "Bloqueado" : "Activo"}</EstadoPunto>,
     },
     {
@@ -199,7 +214,18 @@ export function ListadoActivos() {
         }
       />
 
-      {!isLoading && items.length === 0 ? (
+      {isError ? (
+        <EmptyState
+          icon={<Search size={32} strokeWidth={1.5} />}
+          title="No se pudo cargar el listado"
+          description="Hubo un problema al traer los datos. Intenta de nuevo."
+          action={
+            <Button variant="primary" onClick={() => refetch()}>
+              Reintentar
+            </Button>
+          }
+        />
+      ) : !isLoading && items.length === 0 ? (
         <EmptyState
           icon={<Search size={32} strokeWidth={1.5} />}
           title="Sin resultados en activos"
@@ -214,12 +240,28 @@ export function ListadoActivos() {
         />
       ) : (
         <>
-          <Table columns={columns} data={items} getRowId={(row) => row.id} isLoading={isLoading} />
-          {data && data.total > data.page_size && (
+          <Table
+            columns={columns}
+            data={items}
+            getRowId={(row) => row.id}
+            isLoading={isLoading}
+            ordenamiento={ordenamiento}
+            onOrdenar={(campo) => {
+              alternarOrden(campo);
+              setPage(1);
+            }}
+          />
+          {data && (
             <div className={styles.pagination}>
-              <span>
-                Página {data.page} de {totalPages} · {data.total} registros
-              </span>
+              <span>{rangoRegistros(data.page, data.page_size, data.total)}</span>
+              <SelectorFilasPorPagina
+                value={pageSize}
+                onChange={(n) => {
+                  setPageSize(n);
+                  guardarFilasPorPagina("activos", n);
+                  setPage(1);
+                }}
+              />
               <Button variant="ghost" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
                 Anterior
               </Button>

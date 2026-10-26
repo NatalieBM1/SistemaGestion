@@ -122,8 +122,11 @@ class ErrorFila(Exception):
         super().__init__(motivo)
 
 
-def leer_hoja_registros() -> pd.DataFrame:
-    df = pd.read_excel(RUTA_EXCEL, sheet_name="Registros")
+def leer_hoja_registros(ruta: Path | None = None, hoja: str = "Registros") -> pd.DataFrame:
+    """`ruta`/`hoja` solo se usan para la prueba de ida y vuelta (leer un
+    reporte ya generado como si fuera la hoja "Registros"); en la carga
+    histórica normal se usan los valores por defecto."""
+    df = pd.read_excel(ruta or RUTA_EXCEL, sheet_name=hoja)
     df.columns = [str(c).strip() for c in df.columns]
     df["_prefijo"], df["_consec"] = zip(*df["Numero de remision"].map(_split_prefijo))
     return df

@@ -22,6 +22,47 @@ class FacturarRemisionResponse(BaseModel):
     saldo_pendiente: Decimal
 
 
+class FacturarMultiplesRequest(BaseModel):
+    remision_ids: list[int]
+    numero_factura: str
+    fecha_factura: date
+
+
+class ResumenSeleccionItem(BaseModel):
+    remision_id: int
+    numero_remision: str
+    saldo_pendiente: Decimal | None = None
+    motivo_error: str | None = None
+
+
+class ResumenSeleccionRead(BaseModel):
+    puede_facturar: bool
+    cliente_id: int | None = None
+    cliente_nombre: str | None = None
+    cantidad_remisiones: int
+    valor_total: Decimal
+    items: list[ResumenSeleccionItem]
+
+
+class FacturarMultiplesResponse(BaseModel):
+    numero_factura: str
+    cantidad_remisiones: int
+    valor_total: Decimal
+    remisiones_ids: list[int]
+
+
+class AgregarRemisionesFacturaRequest(BaseModel):
+    remision_ids: list[int]
+
+
+class AgregarRemisionesFacturaResponse(BaseModel):
+    numero_factura: str
+    remisiones_agregadas: int
+    valor_agregado: Decimal
+    remisiones_ids: list[int]
+    remisiones_ids: list[int]
+
+
 class ResumenFacturacionRemisionRead(BaseModel):
     remision_id: int
     valor_total: Decimal
@@ -70,6 +111,8 @@ class RemisionFacturacionRead(BaseModel):
     id: int
     remision_id: int
     numero_remision: str | None = None
+    cliente_id: int | None = None
+    cliente_nombre: str | None = None
     tipo_facturacion: str
     valor_facturado: Decimal
     anulada: bool

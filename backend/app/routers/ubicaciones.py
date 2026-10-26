@@ -53,6 +53,21 @@ def _obtener_municipio_o_404(session: Session, municipio_id: int) -> Municipio:
     return municipio
 
 
+def _serializar_municipio(session: Session, municipio: Municipio) -> MunicipioRead:
+    departamento = session.get(Departamento, municipio.departamento_id)
+    nombre_departamento = departamento.nombre if departamento else None
+    return MunicipioRead(
+        id=municipio.id,
+        codigo_dane=municipio.codigo_dane,
+        nombre=municipio.nombre,
+        departamento_id=municipio.departamento_id,
+        departamento_nombre=nombre_departamento,
+        presentacion=(
+            f"{municipio.nombre} - {nombre_departamento}" if nombre_departamento else municipio.nombre
+        ),
+    )
+
+
 @router.get(
     "/departamentos",
     response_model=PaginatedResponse[DepartamentoRead],
@@ -143,9 +158,14 @@ def listar_municipios_de_departamento(
         statement = statement.where(Municipio.nombre.ilike(f"%{q}%"))
     total = session.exec(select(func.count()).select_from(statement.subquery())).one()
     items = session.exec(
-        statement.offset((page - 1) * page_size).limit(page_size)
+        statement.order_by(Municipio.nombre).offset((page - 1) * page_size).limit(page_size)
     ).all()
-    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size)
+    return PaginatedResponse(
+        items=[_serializar_municipio(session, m) for m in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get(
@@ -156,17 +176,24 @@ def listar_municipios_de_departamento(
 def listar_municipios(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    q: str | None = Query(None, description="Búsqueda por nombre"),
+    q: str | None = Query(None, description="Búsqueda por nombre de municipio o de departamento"),
     session: Session = Depends(get_session),
 ):
     statement = select(Municipio)
     if q:
-        statement = statement.where(Municipio.nombre.ilike(f"%{q}%"))
+        statement = statement.join(Departamento, Departamento.id == Municipio.departamento_id).where(
+            func.concat(Municipio.nombre, " ", Departamento.nombre).ilike(f"%{q}%")
+        )
     total = session.exec(select(func.count()).select_from(statement.subquery())).one()
     items = session.exec(
-        statement.offset((page - 1) * page_size).limit(page_size)
+        statement.order_by(Municipio.nombre).offset((page - 1) * page_size).limit(page_size)
     ).all()
-    return PaginatedResponse(items=items, total=total, page=page, page_size=page_size)
+    return PaginatedResponse(
+        items=[_serializar_municipio(session, m) for m in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get(
@@ -175,7 +202,8 @@ def listar_municipios(
     dependencies=[Depends(require_permission("ubicaciones.leer"))],
 )
 def obtener_municipio(municipio_id: int, session: Session = Depends(get_session)):
-    return _obtener_municipio_o_404(session, municipio_id)
+    municipio = _obtener_municipio_o_404(session, municipio_id)
+    return _serializar_municipio(session, municipio)
 
 
 @router.post(

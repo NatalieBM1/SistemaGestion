@@ -288,8 +288,8 @@ function FacturarModal({
 
         <Input
           label="Número de factura"
-          placeholder="Ej: F-1234"
-          hint="Formato: una letra mayúscula, un guion y dígitos."
+          placeholder="Ej: F-7-468"
+          hint="Formato: una letra mayúscula, guion, dígitos (ej. F-1234 o F-7-468)."
           error={errors.numero_factura?.message}
           {...register("numero_factura", { required: "El número de factura es obligatorio." })}
         />

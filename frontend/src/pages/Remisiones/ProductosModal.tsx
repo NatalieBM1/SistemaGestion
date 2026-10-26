@@ -13,6 +13,7 @@ import {
 import { Button, Modal, useToast } from "../../components/ui";
 import { canWrite } from "../../lib/permissions";
 import { formatMoney } from "../../lib/format";
+import { formatNumeroRemision } from "../../lib/formatNumeroRemision";
 import { useAuthStore } from "../../store/authStore";
 import { PRODUCTO_DEFAULT, ProductoFormFields, type ProductoFormRow } from "./ProductoFormFields";
 import styles from "../../components/CatalogoCRUD.module.css";
@@ -154,7 +155,7 @@ export function ProductosModal({
   const productos = remision?.productos ?? [];
   const titulo =
     vista === "lista"
-      ? `Productos de ${remision?.numero_remision ?? ""}`
+      ? `Productos de ${formatNumeroRemision(remision?.numero_remision)}`
       : editingId
         ? "Editar producto"
         : "Agregar producto";

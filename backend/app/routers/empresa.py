@@ -36,10 +36,10 @@ def obtener_empresa(session: Session = Depends(get_session)):
     return EmpresaRead(
         nombre=tercero.nombre,
         nit=tercero.identificacion,
-        direccion=tercero.direccion,
+        direccion=tercero.direccion or None,
         telefono=tercero.telefono or None,
         email=tercero.email or None,
         ciudad=municipio.nombre if municipio else None,
-        responsabilidad_iva=tercero.regimen,
+        responsabilidad_iva=tercero.regimen or None,
         resolucion_habilitacion=settings.empresa_resolucion_habilitacion,
     )

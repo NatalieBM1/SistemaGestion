@@ -13,9 +13,18 @@ export async function listCatalogo(
   endpoint: string,
   page: number,
   q: string,
+  pageSize = 20,
+  ordenarPor?: string,
+  sentido?: "asc" | "desc",
 ): Promise<PaginatedResponse<CatalogoItem>> {
   const { data } = await apiClient.get<PaginatedResponse<CatalogoItem>>(endpoint, {
-    params: { page, page_size: 20, q: q || undefined },
+    params: {
+      page,
+      page_size: pageSize,
+      q: q || undefined,
+      ordenar_por: ordenarPor,
+      sentido,
+    },
   });
   return data;
 }

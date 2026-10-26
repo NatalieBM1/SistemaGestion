@@ -27,7 +27,7 @@ def _tipos_de_tercero(session: Session, tercero_id: int) -> list[str]:
 
 
 def _serializar_tercero(session: Session, tercero: Tercero) -> TerceroRead:
-    municipio = session.get(Municipio, tercero.municipio_id)
+    municipio = session.get(Municipio, tercero.municipio_id) if tercero.municipio_id else None
     return TerceroRead(
         id=tercero.id,
         identificacion=tercero.identificacion,
@@ -70,6 +70,9 @@ def _obtener_tercero_o_404(session: Session, tercero_id: int) -> Tercero:
     return tercero
 
 
+COLUMNAS_ORDENABLES_TERCEROS = {"identificacion", "nombre", "telefono"}
+
+
 @router.get(
     "",
     response_model=PaginatedResponse[TerceroRead],
@@ -80,6 +83,8 @@ def listar_terceros(
     page_size: int = Query(20, ge=1, le=100),
     q: str | None = Query(None, description="Búsqueda por nombre o identificación"),
     tipo: str | None = Query(None, description="Filtrar por tipo, ej: cliente, conductor"),
+    ordenar_por: str | None = Query(None),
+    sentido: str = Query("asc", pattern="^(asc|desc)$"),
     session: Session = Depends(get_session),
 ):
     statement = select(Tercero)
@@ -94,6 +99,11 @@ def listar_terceros(
             .where(func.lower(TipoTercero.nombre) == tipo.lower())
         )
     total = session.exec(select(func.count()).select_from(statement.subquery())).one()
+    if ordenar_por:
+        if ordenar_por not in COLUMNAS_ORDENABLES_TERCEROS:
+            raise HTTPException(status_code=422, detail=f"No se puede ordenar terceros por '{ordenar_por}'.")
+        columna = getattr(Tercero, ordenar_por)
+        statement = statement.order_by(columna.desc() if sentido == "desc" else columna.asc())
     terceros = session.exec(
         statement.offset((page - 1) * page_size).limit(page_size)
     ).all()
@@ -119,7 +129,9 @@ def obtener_tercero(tercero_id: int, session: Session = Depends(get_session)):
 )
 def crear_tercero(payload: TerceroCreate, session: Session = Depends(get_session)):
     _verificar_identificacion_unica(session, payload.identificacion)
-    tercero = Tercero(**payload.model_dump())
+    datos = payload.model_dump()
+    datos["nombre"] = datos["nombre"].upper()
+    tercero = Tercero(**datos)
     session.add(tercero)
     commit_or_409(session)
     session.refresh(tercero)
@@ -139,6 +151,8 @@ def actualizar_tercero(
     _verificar_identificacion_unica(
         session, datos.get("identificacion"), excluir_id=tercero_id
     )
+    if "nombre" in datos and datos["nombre"] is not None:
+        datos["nombre"] = datos["nombre"].upper()
     for campo, valor in datos.items():
         setattr(tercero, campo, valor)
     session.add(tercero)

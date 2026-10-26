@@ -8,6 +8,7 @@ export interface ReporteFiltros {
   proyecto_id?: number;
   vehiculo_id?: number;
   camabaja_id?: number;
+  estado_facturacion?: string;
 }
 
 async function descargarReporte(endpoint: string, filtros: ReporteFiltros): Promise<Blob> {

@@ -18,3 +18,9 @@ export { TabsBar } from "./TabsBar";
 export type { TabItem } from "./TabsBar";
 export { EstadoPunto } from "./EstadoPunto";
 export { FormGrid } from "./FormGrid";
+export {
+  SelectorFilasPorPagina,
+  rangoRegistros,
+  leerFilasPorPaginaGuardadas,
+  guardarFilasPorPagina,
+} from "./SelectorFilasPorPagina";

@@ -17,6 +17,8 @@ export interface ActivoListParams {
   page: number;
   page_size?: number;
   q?: string;
+  ordenar_por?: string;
+  sentido?: "asc" | "desc";
 }
 
 export async function listActivos(params: ActivoListParams): Promise<PaginatedResponse<Activo>> {

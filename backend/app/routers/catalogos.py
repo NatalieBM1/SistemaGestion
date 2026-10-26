@@ -57,7 +57,11 @@ router.include_router(
         unique_fields=["codigo"],
         search_field="codigo",
         read_permission="catalogos.leer",
-        write_permission="catalogos.escribir",
+        # Más restrictivo que el resto de catálogos: solo Administrador
+        # (Operador no puede ni crear un prefijo nuevo).
+        create_permission="prefijos.administrar",
+        update_permission="prefijos.administrar",
+        delete_permission="prefijos.administrar",
     )
 )
 
@@ -72,7 +76,9 @@ router.include_router(
         unique_fields=["nombre"],
         search_field="nombre",
         read_permission="catalogos.leer",
-        write_permission="catalogos.escribir",
+        create_permission="catalogos.crear",
+        update_permission="catalogos.editar",
+        delete_permission="catalogos.eliminar",
     )
 )
 
@@ -87,7 +93,9 @@ router.include_router(
         unique_fields=["nombre"],
         search_field="nombre",
         read_permission="catalogos.leer",
-        write_permission="catalogos.escribir",
+        create_permission="catalogos.crear",
+        update_permission="catalogos.editar",
+        delete_permission="catalogos.eliminar",
     )
 )
 
@@ -102,7 +110,9 @@ router.include_router(
         unique_fields=["codigo", "nombre"],
         search_field="nombre",
         read_permission="catalogos.leer",
-        write_permission="catalogos.escribir",
+        create_permission="catalogos.crear",
+        update_permission="catalogos.editar",
+        delete_permission="catalogos.eliminar",
     )
 )
 
@@ -117,7 +127,9 @@ router.include_router(
         unique_fields=["nombre"],
         search_field="nombre",
         read_permission="catalogos.leer",
-        write_permission="catalogos.escribir",
+        create_permission="catalogos.crear",
+        update_permission="catalogos.editar",
+        delete_permission="catalogos.eliminar",
     )
 )
 
@@ -132,7 +144,9 @@ router.include_router(
         unique_fields=["codigo"],
         search_field="codigo",
         read_permission="catalogos.leer",
-        write_permission="catalogos.escribir",
+        create_permission="catalogos.crear",
+        update_permission="catalogos.editar",
+        delete_permission="catalogos.eliminar",
     )
 )
 
@@ -147,7 +161,9 @@ router.include_router(
         unique_fields=["nombre"],
         search_field="nombre",
         read_permission="catalogos.leer",
-        write_permission="catalogos.escribir",
+        create_permission="catalogos.crear",
+        update_permission="catalogos.editar",
+        delete_permission="catalogos.eliminar",
     )
 )
 
@@ -162,6 +178,11 @@ router.include_router(
         unique_fields=[],
         search_field="nombre",
         read_permission="catalogos.leer",
+        # Proyectos NO está en el alcance del bloque 5 (el cliente solo
+        # pidió restringir prefijos, formas de pago, tipos de servicio,
+        # productos, unidades de medida, prefijos de factura y tipos de
+        # tercero) — se deja con el permiso de escritura único de siempre
+        # para no cambiar su comportamiento sin que lo confirme.
         write_permission="catalogos.escribir",
     )
 )

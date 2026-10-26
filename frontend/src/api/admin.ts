@@ -23,9 +23,15 @@ export interface PermisoAdmin {
   modulo: string;
 }
 
-export async function listUsuarios(page: number, q: string): Promise<PaginatedResponse<UsuarioAdmin>> {
+export async function listUsuarios(
+  page: number,
+  q: string,
+  pageSize = 20,
+  ordenarPor?: string,
+  sentido?: "asc" | "desc",
+): Promise<PaginatedResponse<UsuarioAdmin>> {
   const { data } = await apiClient.get<PaginatedResponse<UsuarioAdmin>>("/api/admin/usuarios", {
-    params: { page, page_size: 20, q: q || undefined },
+    params: { page, page_size: pageSize, q: q || undefined, ordenar_por: ordenarPor, sentido },
   });
   return data;
 }

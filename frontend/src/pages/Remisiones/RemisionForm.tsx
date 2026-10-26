@@ -26,6 +26,7 @@ import { formatMoney } from "../../lib/format";
 import { AsyncSelect, Button, Input, PageHeader, TabsBar, useToast, type TabItem } from "../../components/ui";
 import { canWrite } from "../../lib/permissions";
 import { useAuthStore } from "../../store/authStore";
+import { formatNumeroRemision } from "../../lib/formatNumeroRemision";
 import { usePageTitle } from "../../store/pageTitleStore";
 import { FacturacionPanel } from "./FacturacionPanel";
 import { ProductosSection } from "./ProductosSection";
@@ -163,7 +164,7 @@ export function RemisionForm() {
     mutationFn: (payload: Record<string, unknown>) => createRemision(payload),
     onSuccess: (nueva) => {
       queryClient.invalidateQueries({ queryKey: ["remisiones"] });
-      toast.success(`Remisión ${nueva.numero_remision} creada correctamente.`);
+      toast.success(`Remisión ${formatNumeroRemision(nueva.numero_remision)} creada correctamente.`);
       navigate(`/remisiones/${nueva.id}`, { replace: true });
     },
     onError: (error) => setServerError(getApiErrorMessage(error, "No se pudo crear la remisión.")),
@@ -174,7 +175,7 @@ export function RemisionForm() {
     onSuccess: ({ remision: actualizada, advertencia }) => {
       queryClient.invalidateQueries({ queryKey: ["remisiones"] });
       queryClient.invalidateQueries({ queryKey: ["remision", remisionId] });
-      toast.success(`Remisión ${actualizada.numero_remision} actualizada correctamente.`);
+      toast.success(`Remisión ${formatNumeroRemision(actualizada.numero_remision)} actualizada correctamente.`);
       if (advertencia) toast.error(advertencia);
     },
     onError: (error) => setServerError(getApiErrorMessage(error, "No se pudo actualizar la remisión.")),
@@ -272,7 +273,7 @@ export function RemisionForm() {
     },
   ];
 
-  const breadcrumb = ["Operación", "Remisiones", isEditing ? `Remisión ${remision?.numero_remision ?? ""}`.trim() : "Nueva"];
+  const breadcrumb = ["Operación", "Remisiones", isEditing ? `Remisión ${formatNumeroRemision(remision?.numero_remision) || ""}`.trim() : "Nueva"];
 
   return (
     <div className={formStyles.page}>
@@ -411,7 +412,7 @@ export function RemisionForm() {
             ) : (
               <Input
                 label="Número de consecutivo"
-                value={isEditing ? remision?.numero_remision ?? "" : "Automático"}
+                value={isEditing ? formatNumeroRemision(remision?.numero_remision) : "Automático"}
                 disabled
                 readOnly
                 leftElement={<FileText size={16} aria-hidden="true" />}
@@ -487,7 +488,7 @@ export function RemisionForm() {
                   <AsyncSelect
                     label="Ubicación de origen"
                     endpoint="/api/ubicaciones/municipios"
-                    getLabel={(item) => String(item.nombre)}
+                    getLabel={(item) => String(item.presentacion ?? item.nombre)}
                     value={field.value}
                     onChange={field.onChange}
                     disabled={bloqueada}
@@ -507,7 +508,7 @@ export function RemisionForm() {
                   <AsyncSelect
                     label="Ubicación de destino"
                     endpoint="/api/ubicaciones/municipios"
-                    getLabel={(item) => String(item.nombre)}
+                    getLabel={(item) => String(item.presentacion ?? item.nombre)}
                     value={field.value}
                     onChange={field.onChange}
                     disabled={bloqueada}

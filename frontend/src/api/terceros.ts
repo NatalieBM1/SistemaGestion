@@ -5,12 +5,12 @@ export interface Tercero {
   id: number;
   identificacion: string;
   nombre: string;
-  direccion: string;
-  municipio_id: number;
+  direccion: string | null;
+  municipio_id: number | null;
   municipio_nombre: string | null;
-  email: string;
-  telefono: string;
-  regimen: string;
+  email: string | null;
+  telefono: string | null;
+  regimen: string | null;
   tiene_licencia: boolean | null;
   fecha_vencimiento_licencia: string | null;
   creado_en: string;
@@ -22,6 +22,8 @@ export interface TerceroListParams {
   page_size?: number;
   q?: string;
   tipo?: string;
+  ordenar_por?: string;
+  sentido?: "asc" | "desc";
 }
 
 export async function listTerceros(params: TerceroListParams): Promise<PaginatedResponse<Tercero>> {

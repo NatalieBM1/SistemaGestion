@@ -12,6 +12,8 @@ export interface RemisionFacturacion {
   id: number;
   remision_id: number;
   numero_remision: string | null;
+  cliente_id: number | null;
+  cliente_nombre: string | null;
   tipo_facturacion: "TOTAL" | "PARCIAL";
   valor_facturado: string;
   anulada: boolean;
@@ -49,6 +51,29 @@ export interface ActualizarFacturaResponse {
   remisiones_ids: number[];
 }
 
+export interface ResumenSeleccionItem {
+  remision_id: number;
+  numero_remision: string;
+  saldo_pendiente: string | null;
+  motivo_error: string | null;
+}
+
+export interface ResumenSeleccion {
+  puede_facturar: boolean;
+  cliente_id: number | null;
+  cliente_nombre: string | null;
+  cantidad_remisiones: number;
+  valor_total: string;
+  items: ResumenSeleccionItem[];
+}
+
+export interface FacturarMultiplesResponse {
+  numero_factura: string;
+  cantidad_remisiones: number;
+  valor_total: string;
+  remisiones_ids: number[];
+}
+
 export interface CargaExcelResponse {
   filas_totales: number;
   filas_exitosas: number;
@@ -62,6 +87,8 @@ export interface FacturaListParams {
   desde?: string;
   hasta?: string;
   numero_factura?: string;
+  ordenar_por?: string;
+  sentido?: "asc" | "desc";
 }
 
 export async function listFacturas(params: FacturaListParams): Promise<PaginatedResponse<Factura>> {
@@ -123,6 +150,50 @@ async function subirExcel(endpoint: string, file: File): Promise<CargaExcelRespo
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
+}
+
+export async function resumenFacturarMultiples(remisionIds: number[]): Promise<ResumenSeleccion> {
+  const { data } = await apiClient.post<ResumenSeleccion>(
+    "/api/facturas/facturar-multiples/resumen",
+    remisionIds,
+  );
+  return data;
+}
+
+export async function facturarMultiples(payload: {
+  remision_ids: number[];
+  numero_factura: string;
+  fecha_factura: string;
+}): Promise<FacturarMultiplesResponse> {
+  const { data } = await apiClient.post<FacturarMultiplesResponse>(
+    "/api/facturas/facturar-multiples",
+    payload,
+  );
+  return data;
+}
+
+export interface AgregarRemisionesFacturaResponse {
+  numero_factura: string;
+  remisiones_agregadas: number;
+  valor_agregado: string;
+  remisiones_ids: number[];
+}
+
+export async function agregarRemisionesAFactura(
+  numeroFactura: string,
+  remisionIds: number[],
+): Promise<AgregarRemisionesFacturaResponse> {
+  const { data } = await apiClient.post<AgregarRemisionesFacturaResponse>(
+    `/api/facturas/${encodeURIComponent(numeroFactura)}/remisiones`,
+    { remision_ids: remisionIds },
+  );
+  return data;
+}
+
+export async function quitarRemisionDeFactura(numeroFactura: string, remisionId: number): Promise<void> {
+  await apiClient.delete(
+    `/api/facturas/${encodeURIComponent(numeroFactura)}/remisiones/${remisionId}`,
+  );
 }
 
 export const facturarMasivoExcel = (file: File) => subirExcel("/api/facturas/facturar-masivo", file);

@@ -14,6 +14,18 @@ from app.models.usuario import Permiso, Rol, RolPermiso, Usuario, UsuarioRol
 PERMISOS = [
     ("catalogos.leer", "catalogos"),
     ("catalogos.escribir", "catalogos"),
+    # Separados de "catalogos.escribir" para que el rol Operador pueda
+    # crear registros en los catálogos (prefijos, formas de pago, tipos de
+    # servicio, productos, unidades de medida, prefijos de factura, tipos
+    # de tercero) pero no editarlos ni borrarlos. "catalogos.escribir"
+    # sigue gobernando Proyectos, que no entra en esta restricción.
+    ("catalogos.crear", "catalogos"),
+    ("catalogos.editar", "catalogos"),
+    ("catalogos.eliminar", "catalogos"),
+    # Prefijos es más restrictivo que el resto de catálogos: solo
+    # Administrador puede crear/editar/eliminar (ni siquiera Operador
+    # puede crear uno nuevo, a diferencia de los otros 6 catálogos).
+    ("prefijos.administrar", "catalogos"),
     ("terceros.leer", "terceros"),
     ("terceros.escribir", "terceros"),
     ("ubicaciones.leer", "ubicaciones"),
@@ -30,7 +42,8 @@ PERMISOS = [
 
 PERMISOS_OPERADOR = [
     "catalogos.leer",
-    "catalogos.escribir",
+    "catalogos.escribir",  # cubre Proyectos (crear/editar/eliminar), no restringido
+    "catalogos.crear",  # crear en el resto de catálogos; NO editar.catalogos / eliminar.catalogos
     "terceros.leer",
     "terceros.escribir",
     "ubicaciones.leer",

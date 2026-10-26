@@ -23,11 +23,16 @@ import {
   Modal,
   PageHeader,
   Select,
+  SelectorFilasPorPagina,
   Switch,
   Table,
   type TableColumn,
+  guardarFilasPorPagina,
+  leerFilasPorPaginaGuardadas,
+  rangoRegistros,
   useToast,
 } from "../../components/ui";
+import { useOrdenamiento } from "../../hooks/useOrdenamiento";
 import { canWrite } from "../../lib/permissions";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
@@ -70,21 +75,31 @@ export function ListadoTerceros() {
   const queryClient = useQueryClient();
 
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => leerFilasPorPaginaGuardadas("terceros", 20));
   const [search, setSearch] = useState("");
   const [tipoFiltro, setTipoFiltro] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Tercero | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const { ordenamiento, alternar: alternarOrden } = useOrdenamiento();
 
   const { data: tiposTercero } = useQuery({
     queryKey: ["tipos-tercero-lookup"],
     queryFn: listTiposTercero,
   });
 
-  const queryKey = ["terceros", page, search, tipoFiltro];
-  const { data, isLoading } = useQuery({
+  const queryKey = ["terceros", page, pageSize, search, tipoFiltro, ordenamiento];
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey,
-    queryFn: () => listTerceros({ page, q: search || undefined, tipo: tipoFiltro || undefined }),
+    queryFn: () =>
+      listTerceros({
+        page,
+        page_size: pageSize,
+        q: search || undefined,
+        tipo: tipoFiltro || undefined,
+        ordenar_por: ordenamiento.campo ?? undefined,
+        sentido: ordenamiento.sentido ?? undefined,
+      }),
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["terceros"] });
@@ -117,11 +132,11 @@ export function ListadoTerceros() {
     reset({
       identificacion: item.identificacion,
       nombre: item.nombre,
-      direccion: item.direccion,
+      direccion: item.direccion ?? "",
       municipio_id: item.municipio_id,
-      email: item.email,
-      telefono: item.telefono,
-      regimen: item.regimen,
+      email: item.email ?? "",
+      telefono: item.telefono ?? "",
+      regimen: item.regimen ?? "",
       tiposSeleccionados: (tiposTercero ?? [])
         .filter((t) => item.tipos.includes(t.nombre))
         .map((t) => t.id),
@@ -147,12 +162,12 @@ export function ListadoTerceros() {
     mutationFn: async (values: TerceroFormValues) => {
       const payload = {
         identificacion: values.identificacion,
-        nombre: values.nombre,
-        direccion: values.direccion,
+        nombre: values.nombre.toLocaleUpperCase("es-CO"),
+        direccion: values.direccion || null,
         municipio_id: values.municipio_id,
-        email: values.email,
-        telefono: values.telefono,
-        regimen: values.regimen,
+        email: values.email || null,
+        telefono: values.telefono || null,
+        regimen: values.regimen || null,
         tiene_licencia: esConductor ? values.tiene_licencia : null,
         fecha_vencimiento_licencia: esConductor && values.tiene_licencia ? values.fecha_vencimiento_licencia || null : null,
       };
@@ -180,8 +195,8 @@ export function ListadoTerceros() {
   });
 
   const columns: TableColumn<Tercero>[] = [
-    { key: "identificacion", header: "Identificación", monoData: true, render: (t) => t.identificacion },
-    { key: "nombre", header: "Nombre", truncate: true, render: (t) => t.nombre },
+    { key: "identificacion", header: "Identificación", monoData: true, sortField: "identificacion", render: (t) => t.identificacion },
+    { key: "nombre", header: "Nombre", truncate: true, sortField: "nombre", render: (t) => t.nombre },
     {
       key: "tipos",
       header: "Tipos",
@@ -199,7 +214,7 @@ export function ListadoTerceros() {
         </div>
       ),
     },
-    { key: "telefono", header: "Teléfono", monoData: true, render: (t) => t.telefono },
+    { key: "telefono", header: "Teléfono", monoData: true, sortField: "telefono", render: (t) => t.telefono ?? "—" },
     { key: "municipio", header: "Municipio", render: (t) => t.municipio_nombre ?? "—" },
     {
       key: "acciones",
@@ -279,7 +294,18 @@ export function ListadoTerceros() {
         }
       />
 
-      {!isLoading && items.length === 0 ? (
+      {isError ? (
+        <EmptyState
+          icon={<Search size={32} strokeWidth={1.5} />}
+          title="No se pudo cargar el listado"
+          description="Hubo un problema al traer los datos. Intenta de nuevo."
+          action={
+            <Button variant="primary" onClick={() => refetch()}>
+              Reintentar
+            </Button>
+          }
+        />
+      ) : !isLoading && items.length === 0 ? (
         <EmptyState
           icon={<Search size={32} strokeWidth={1.5} />}
           title="Sin resultados en terceros"
@@ -292,12 +318,28 @@ export function ListadoTerceros() {
         />
       ) : (
         <>
-          <Table columns={columns} data={items} getRowId={(row) => row.id} isLoading={isLoading} />
-          {data && data.total > data.page_size && (
+          <Table
+            columns={columns}
+            data={items}
+            getRowId={(row) => row.id}
+            isLoading={isLoading}
+            ordenamiento={ordenamiento}
+            onOrdenar={(campo) => {
+              alternarOrden(campo);
+              setPage(1);
+            }}
+          />
+          {data && (
             <div className={styles.pagination}>
-              <span>
-                Página {data.page} de {totalPages} · {data.total} registros
-              </span>
+              <span>{rangoRegistros(data.page, data.page_size, data.total)}</span>
+              <SelectorFilasPorPagina
+                value={pageSize}
+                onChange={(n) => {
+                  setPageSize(n);
+                  guardarFilasPorPagina("terceros", n);
+                  setPage(1);
+                }}
+              />
               <Button variant="ghost" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
                 Anterior
               </Button>
@@ -330,19 +372,24 @@ export function ListadoTerceros() {
           <Input
             label="Identificación"
             monoData
+            required
             error={errors.identificacion?.message}
             {...register("identificacion", { required: "La identificación es obligatoria." })}
           />
           <Input
             label="Nombre"
+            required
             error={errors.nombre?.message}
-            {...register("nombre", { required: "El nombre es obligatorio." })}
+            {...register("nombre", {
+              required: "El nombre es obligatorio.",
+              onChange: (e) => {
+                const posicion = e.target.selectionStart;
+                e.target.value = e.target.value.toLocaleUpperCase("es-CO");
+                e.target.setSelectionRange(posicion, posicion);
+              },
+            })}
           />
-          <Input
-            label="Dirección"
-            error={errors.direccion?.message}
-            {...register("direccion", { required: "La dirección es obligatoria." })}
-          />
+          <Input label="Dirección" error={errors.direccion?.message} {...register("direccion")} />
           <Controller
             control={control}
             name="municipio_id"
@@ -350,30 +397,15 @@ export function ListadoTerceros() {
               <AsyncSelect
                 label="Municipio"
                 endpoint="/api/ubicaciones/municipios"
-                getLabel={(item) => String(item.nombre)}
+                getLabel={(item) => String(item.presentacion ?? item.nombre)}
                 value={field.value}
                 onChange={field.onChange}
-                required
               />
             )}
           />
-          <Input
-            label="Email"
-            type="email"
-            error={errors.email?.message}
-            {...register("email", { required: "El email es obligatorio." })}
-          />
-          <Input
-            label="Teléfono"
-            monoData
-            error={errors.telefono?.message}
-            {...register("telefono", { required: "El teléfono es obligatorio." })}
-          />
-          <Input
-            label="Régimen"
-            error={errors.regimen?.message}
-            {...register("regimen", { required: "El régimen es obligatorio." })}
-          />
+          <Input label="Email" type="email" error={errors.email?.message} {...register("email")} />
+          <Input label="Teléfono" monoData error={errors.telefono?.message} {...register("telefono")} />
+          <Input label="Régimen" error={errors.regimen?.message} {...register("regimen")} />
 
           <div>
             <label style={{ display: "block", marginBottom: "var(--space-1)", fontSize: "var(--text-body)", color: "var(--text-secondary)" }}>
