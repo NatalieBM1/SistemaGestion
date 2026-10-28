@@ -30,6 +30,20 @@ class Settings(BaseSettings):
     # usa Tercero.regimen (ver routers/empresa.py).
     empresa_resolucion_habilitacion: str = "Res. Habilitación 154 de Octubre 20/2014"
 
+    # ── Correo saliente (recuperación de contraseña) ──────────────────────────
+    # Configuración SMTP para enviar códigos de verificación.
+    # En desarrollo puede usarse una cuenta Gmail con contraseña de aplicación,
+    # o un servicio transaccional (Brevo, SendGrid, etc.).
+    # Si no se configuran, el endpoint de forgot-password devuelve error 503.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_name: str = "Transportes Guerreros"
+    smtp_from_email: str = ""
+    # Tiempo de vida del código de recuperación en minutos
+    reset_token_expire_minutes: int = 15
+
     model_config = SettingsConfigDict(env_file=ROOT_ENV_FILE, extra="ignore")
 
     @property

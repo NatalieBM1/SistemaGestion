@@ -11,6 +11,7 @@ import { TiposServicioPage } from "./pages/catalogos/TiposServicioPage";
 import { TiposTerceroPage } from "./pages/catalogos/TiposTerceroPage";
 import { UnidadesMedidaPage } from "./pages/catalogos/UnidadesMedidaPage";
 import { LoginPage } from "./pages/Login";
+import { RecuperarPasswordPage } from "./pages/RecuperarPassword";
 import { AccesoDenegado } from "./pages/AccesoDenegado";
 import { CargasExcel } from "./pages/Facturas/CargasExcel";
 import { DetalleFactura } from "./pages/Facturas/DetalleFactura";
@@ -31,6 +32,7 @@ export function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/recuperar-password" element={<RecuperarPasswordPage />} />
 
       {/* Ruta de impresión: fuera de MainLayout a propósito (sin sidebar/
           header) para que @media print no tenga que pelear con ese CSS. */}

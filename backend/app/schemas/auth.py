@@ -23,3 +23,18 @@ class RefreshRequest(BaseModel):
 class RefreshResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class VerifyResetCodeRequest(BaseModel):
+    email: str
+    codigo: str
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    codigo: str
+    nueva_password: str

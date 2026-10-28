@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { getApiErrorMessage } from "../api/errors";
 import { Button, Input } from "../components/ui";
@@ -117,6 +117,9 @@ export function LoginPage() {
             <Button type="submit" variant="primary" fullWidth loading={isSubmitting} className={styles.submit}>
               {isSubmitting ? "Ingresando…" : "Iniciar sesión"}
             </Button>
+            <Link to="/recuperar-password" className={styles.forgotLink}>
+              ¿Olvidaste tu contraseña?
+            </Link>
           </form>
         </section>
 

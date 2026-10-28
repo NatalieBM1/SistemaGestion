@@ -17,6 +17,9 @@ class Usuario(SQLModel, table=True):
         default_factory=datetime.utcnow,
         sa_column_kwargs={"onupdate": datetime.utcnow},
     )
+    # Recuperación de contraseña: código de 6 dígitos + expiración
+    reset_token: Optional[str] = Field(default=None)
+    reset_token_expires: Optional[datetime] = Field(default=None)
 
 
 class Rol(SQLModel, table=True):
