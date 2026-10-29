@@ -4,7 +4,6 @@ import {
   BarChart3,
   Building2,
   Car,
-  FileText,
   FileWarning,
   Plus,
   Receipt,
