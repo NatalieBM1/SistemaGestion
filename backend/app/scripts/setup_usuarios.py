@@ -59,6 +59,7 @@ def main() -> None:
             else:
                 usuario.nombre = datos["nombre"]
                 usuario.password_hash = hash_password(datos["password"])
+                usuario.token_version += 1
                 usuario.activo = True
                 session.add(usuario)
                 session.flush()

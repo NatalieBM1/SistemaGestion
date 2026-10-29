@@ -1,19 +1,33 @@
+import logging
 import random
-import smtplib
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
 from app.core.database import get_session
 from app.core.deps import get_current_active_user
+from app.core.fechas import ahora_utc
+from app.core.rate_limit import (
+    ALCANCE_USAR_CODIGO,
+    LIMITE_LOGIN_CORREO,
+    LIMITE_LOGIN_IP,
+    LIMITE_SOLICITAR_CODIGO,
+    LIMITE_USAR_CODIGO,
+    limitar_por_correo,
+    limiter,
+)
 from app.core.security import (
     TokenError,
     create_access_token,
     create_refresh_token,
+    datos_token,
     decode_token,
+    hash_codigo_recuperacion,
     hash_password,
+    token_vigente,
+    verificar_codigo_recuperacion,
     verify_password,
 )
 from app.models.usuario import Permiso, Rol, RolPermiso, Usuario, UsuarioRol
@@ -24,12 +38,12 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     TokenResponse,
     UsuarioMe,
-    VerifyResetCodeRequest,
 )
 from app.services import email_service
 from app.core.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 def _roles_de_usuario(session: Session, usuario_id: int) -> list[str]:
@@ -63,10 +77,13 @@ def _usuario_me(session: Session, usuario: Usuario) -> UsuarioMe:
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit(LIMITE_LOGIN_IP)
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: Session = Depends(get_session),
 ):
+    limitar_por_correo(LIMITE_LOGIN_CORREO, "login", form_data.username)
     usuario = session.exec(
         select(Usuario).where(Usuario.email == form_data.username)
     ).first()
@@ -82,8 +99,8 @@ def login(
             detail="El usuario está inactivo",
         )
 
-    access_token = create_access_token({"sub": str(usuario.id)})
-    refresh_token = create_refresh_token({"sub": str(usuario.id)})
+    access_token = create_access_token(datos_token(usuario))
+    refresh_token = create_refresh_token(datos_token(usuario))
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -108,13 +125,13 @@ def refresh(payload: RefreshRequest, session: Session = Depends(get_session)):
 
     usuario_id = data.get("sub")
     usuario = session.get(Usuario, int(usuario_id)) if usuario_id is not None else None
-    if usuario is None or not usuario.activo:
+    if usuario is None or not usuario.activo or not token_vigente(data, usuario):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="El usuario del token de refresco ya no es válido",
         )
 
-    return RefreshResponse(access_token=create_access_token({"sub": str(usuario.id)}))
+    return RefreshResponse(access_token=create_access_token(datos_token(usuario)))
 
 
 @router.get("/me", response_model=UsuarioMe)
@@ -144,79 +161,76 @@ _RESET_DETAIL_GENERICO = (
 )
 
 
+def _enviar_codigo_en_segundo_plano(email: str, nombre: str, codigo: str) -> None:
+    """Corre después de enviar la respuesta (BackgroundTasks), así el
+    tiempo de respuesta no delata si el correo existe y un SMTP lento no
+    bloquea la petición. Los fallos solo quedan en el log."""
+    try:
+        email_service.enviar_codigo_recuperacion(email=email, nombre=nombre, codigo=codigo)
+    except Exception:
+        logger.exception("No se pudo enviar el código de recuperación a %s", email)
+
+
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
+@limiter.limit(LIMITE_SOLICITAR_CODIGO)
 def forgot_password(
+    request: Request,
     payload: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session),
 ):
     """Genera un código de 6 dígitos y lo envía al email del usuario.
 
-    Siempre devuelve el mismo mensaje genérico para no revelar si el email
-    existe en el sistema.
+    Responde exactamente igual (mismo código y mismo cuerpo) exista o no el
+    correo, para no revelar qué correos están registrados. El correo se
+    envía en segundo plano; si falla, queda en el log.
     """
+    limitar_por_correo(LIMITE_SOLICITAR_CODIGO, "solicitar-codigo", payload.email)
+    if not email_service.smtp_configurado():
+        # Es un problema de configuración del servidor, igual para todos los
+        # correos: no revela si el correo existe.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="La recuperación de contraseña no está disponible en este momento.",
+        )
+
     usuario = session.exec(
         select(Usuario).where(Usuario.email == payload.email)
     ).first()
 
-    # Respondemos igual independientemente de si el usuario existe o no
-    if usuario is None or not usuario.activo:
-        return {"detail": _RESET_DETAIL_GENERICO}
-
-    # Generar código numérico de 6 dígitos
-    codigo = f"{random.SystemRandom().randint(0, 999999):06d}"
-    expira = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.reset_token_expire_minutes
-    )
-
-    # Guardar hash del código (no el código en claro)
-    usuario.reset_token = hash_password(codigo)
-    usuario.reset_token_expires = expira
-    session.add(usuario)
-    session.commit()
-
-    # Enviar el correo
-    try:
-        email_service.enviar_codigo_recuperacion(
-            email=usuario.email,
-            nombre=usuario.nombre,
-            codigo=codigo,
+    if usuario is not None and usuario.activo:
+        codigo = f"{random.SystemRandom().randint(0, 999999):06d}"
+        # UTC sin zona, igual que la columna (ver core/fechas.py).
+        expira = ahora_utc() + timedelta(
+            minutes=settings.reset_token_expire_minutes
         )
-    except ValueError as exc:
-        # SMTP no configurado en este entorno
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
-    except smtplib.SMTPException as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="No se pudo enviar el correo. Intenta de nuevo más tarde.",
-        ) from exc
+        # Un código nuevo reemplaza al anterior y reinicia los intentos.
+        usuario.reset_token = hash_codigo_recuperacion(usuario.id, codigo)
+        usuario.reset_token_expires = expira
+        usuario.reset_intentos = 0
+        session.add(usuario)
+        session.commit()
+        background_tasks.add_task(
+            _enviar_codigo_en_segundo_plano, usuario.email, usuario.nombre, codigo
+        )
 
     return {"detail": _RESET_DETAIL_GENERICO}
 
 
-@router.post("/verify-reset-code", status_code=status.HTTP_200_OK)
-def verify_reset_code(
-    payload: VerifyResetCodeRequest,
-    session: Session = Depends(get_session),
-):
-    """Verifica que el código sea correcto y no haya expirado, sin cambiar la contraseña.
-
-    El frontend lo usa para habilitar el campo de nueva contraseña solo si el
-    código es válido, evitando que el usuario escriba la contraseña nueva antes
-    de confirmar el código.
-    """
-    _validar_codigo_o_400(session, payload.email, payload.codigo)
-    return {"detail": "Código válido."}
-
-
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
+@limiter.limit(LIMITE_USAR_CODIGO)
 def reset_password(
+    request: Request,
     payload: ResetPasswordRequest,
     session: Session = Depends(get_session),
 ):
-    """Verifica el código y actualiza la contraseña del usuario."""
+    """Verifica el código y actualiza la contraseña del usuario.
+
+    El código es de un solo uso: se borra al usarlo. Además sube
+    token_version, así que cualquier sesión abierta con la contraseña
+    anterior deja de valer.
+    """
+    limitar_por_correo(LIMITE_USAR_CODIGO, ALCANCE_USAR_CODIGO, payload.email)
     usuario = _validar_codigo_o_400(session, payload.email, payload.codigo)
 
     if len(payload.nueva_password) < 8:
@@ -228,6 +242,8 @@ def reset_password(
     usuario.password_hash = hash_password(payload.nueva_password)
     usuario.reset_token = None
     usuario.reset_token_expires = None
+    usuario.reset_intentos = 0
+    usuario.token_version += 1
     session.add(usuario)
     session.commit()
 
@@ -236,28 +252,40 @@ def reset_password(
 
 # ── Helper interno ────────────────────────────────────────────────────────────
 
-def _validar_codigo_o_400(session: Session, email: str, codigo: str) -> Usuario:
-    """Busca el usuario, verifica el código y su expiración.
+MAX_INTENTOS_CODIGO = 5
 
-    Devuelve el objeto Usuario si todo es correcto; lanza HTTP 400 en cualquier
-    caso de fallo (mensaje genérico para no dar pistas de enumeración).
+
+def _validar_codigo_o_400(session: Session, email: str, codigo: str) -> Usuario:
+    """Busca el usuario, verifica el código, su expiración y los intentos.
+
+    Cada código incorrecto suma un intento; al llegar a MAX_INTENTOS_CODIGO
+    el código queda bloqueado (aunque luego se escriba bien) y hay que pedir
+    uno nuevo. Devuelve el Usuario si todo es correcto; si no, HTTP 400 con
+    un mensaje genérico para no dar pistas de enumeración.
     """
     _error = HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail="El código es incorrecto o ha expirado.",
+        detail=(
+            "El código es incorrecto, ya venció o se bloqueó por demasiados "
+            "intentos. Si es necesario, solicita un código nuevo."
+        ),
     )
     usuario = session.exec(select(Usuario).where(Usuario.email == email)).first()
     if usuario is None or not usuario.activo:
         raise _error
     if not usuario.reset_token or not usuario.reset_token_expires:
         raise _error
-
-    # Comparar expiración (reset_token_expires está en UTC naive en la BD)
-    ahora = datetime.now(timezone.utc).replace(tzinfo=None)
-    if usuario.reset_token_expires < ahora:
+    if usuario.reset_intentos >= MAX_INTENTOS_CODIGO:
         raise _error
 
-    if not verify_password(codigo, usuario.reset_token):
+    # reset_token_expires está en UTC naive en la BD (core/fechas.py)
+    if usuario.reset_token_expires < ahora_utc():
+        raise _error
+
+    if not verificar_codigo_recuperacion(usuario.id, codigo, usuario.reset_token):
+        usuario.reset_intentos += 1
+        session.add(usuario)
+        session.commit()
         raise _error
 
     return usuario

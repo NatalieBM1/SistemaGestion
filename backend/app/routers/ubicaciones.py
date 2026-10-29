@@ -4,6 +4,7 @@ from sqlmodel import Session, func, select
 from app.core.database import get_session
 from app.core.deps import require_permission
 from app.core.errors import commit_or_409
+from app.core.ordenamiento import clausulas_orden
 from app.models.ubicacion import Departamento, Municipio
 from app.schemas.common import PaginatedResponse
 from app.schemas.ubicacion import (
@@ -16,6 +17,21 @@ from app.schemas.ubicacion import (
 )
 
 router = APIRouter(prefix="/api/ubicaciones", tags=["ubicaciones"])
+
+COLUMNAS_ORDENABLES_UBICACIONES = {"nombre", "codigo_dane"}
+
+
+def _orden_ubicacion(modelo, ordenar_por: str | None, sentido: str, por_defecto) -> list:
+    if ordenar_por is None:
+        return [por_defecto, modelo.id]
+    if ordenar_por not in COLUMNAS_ORDENABLES_UBICACIONES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"No se puede ordenar por '{ordenar_por}'.",
+        )
+    # codigo_dane tiene largo fijo con ceros a la izquierda: como texto
+    # ya ordena igual que como número.
+    return clausulas_orden([getattr(modelo, ordenar_por)], sentido, modelo.id)
 
 
 def _verificar_codigo_dane_unico(
@@ -77,14 +93,19 @@ def listar_departamentos(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     q: str | None = Query(None, description="Búsqueda por nombre"),
+    ordenar_por: str | None = Query(None, description="nombre o codigo_dane"),
+    sentido: str = Query("asc", pattern="^(asc|desc)$"),
     session: Session = Depends(get_session),
 ):
     statement = select(Departamento)
     if q:
         statement = statement.where(Departamento.nombre.ilike(f"%{q}%"))
     total = session.exec(select(func.count()).select_from(statement.subquery())).one()
+    # Por defecto, el orden de siempre (el de carga, id); antes no había
+    # ORDER BY y la paginación no era estable.
+    orden = _orden_ubicacion(Departamento, ordenar_por, sentido, Departamento.id)
     items = session.exec(
-        statement.offset((page - 1) * page_size).limit(page_size)
+        statement.order_by(*orden).offset((page - 1) * page_size).limit(page_size)
     ).all()
     return PaginatedResponse(items=items, total=total, page=page, page_size=page_size)
 
@@ -150,6 +171,8 @@ def listar_municipios_de_departamento(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     q: str | None = Query(None, description="Búsqueda por nombre"),
+    ordenar_por: str | None = Query(None, description="nombre o codigo_dane"),
+    sentido: str = Query("asc", pattern="^(asc|desc)$"),
     session: Session = Depends(get_session),
 ):
     _obtener_departamento_o_404(session, departamento_id)
@@ -157,8 +180,9 @@ def listar_municipios_de_departamento(
     if q:
         statement = statement.where(Municipio.nombre.ilike(f"%{q}%"))
     total = session.exec(select(func.count()).select_from(statement.subquery())).one()
+    orden = _orden_ubicacion(Municipio, ordenar_por, sentido, Municipio.nombre)
     items = session.exec(
-        statement.order_by(Municipio.nombre).offset((page - 1) * page_size).limit(page_size)
+        statement.order_by(*orden).offset((page - 1) * page_size).limit(page_size)
     ).all()
     return PaginatedResponse(
         items=[_serializar_municipio(session, m) for m in items],

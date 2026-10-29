@@ -78,9 +78,15 @@ export function ListadoFacturas() {
       ),
     },
     { key: "fecha_factura", header: "Fecha", sortField: "fecha_factura", render: (f) => f.fecha_factura },
-    { key: "cantidad_remisiones", header: "Remisiones", render: (f) => f.cantidad_remisiones },
+    {
+      key: "cantidad_remisiones",
+      header: "Remisiones",
+      sortField: "cantidad_remisiones",
+      render: (f) => f.cantidad_remisiones,
+    },
     {
       key: "valor_total_facturado",
+      sortField: "valor_total_facturado",
       header: "Valor total facturado",
       align: "right",
       render: (f) => formatMoney(f.valor_total_facturado),

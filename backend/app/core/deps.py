@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
 
 from app.core.database import get_session
-from app.core.security import TokenError, decode_token
+from app.core.security import TokenError, decode_token, token_vigente
 from app.models.usuario import Permiso, Rol, RolPermiso, Usuario, UsuarioRol
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -43,6 +43,12 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="El usuario del token ya no existe",
+        )
+    if not token_vigente(payload, usuario):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="La sesión ya no es válida. Inicia sesión de nuevo.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     return usuario
 

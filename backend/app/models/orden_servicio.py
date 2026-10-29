@@ -5,6 +5,8 @@ from typing import Optional
 from sqlalchemy import Column, Numeric
 from sqlmodel import Field, SQLModel
 
+from app.core.fechas import ahora_utc
+
 
 class OrdenServicio(SQLModel, table=True):
     __tablename__ = "ordenes_servicio"
@@ -16,4 +18,4 @@ class OrdenServicio(SQLModel, table=True):
     saldo_disponible: Decimal = Field(
         sa_column=Column(Numeric(14, 2), nullable=False)
     )
-    creado_en: datetime = Field(default_factory=datetime.utcnow)
+    creado_en: datetime = Field(default_factory=ahora_utc)

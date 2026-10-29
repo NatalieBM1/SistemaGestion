@@ -198,7 +198,7 @@ export function ListadoTerceros() {
     { key: "identificacion", header: "Identificación", monoData: true, sortField: "identificacion", render: (t) => t.identificacion },
     { key: "nombre", header: "Nombre", truncate: true, sortField: "nombre", render: (t) => t.nombre },
     {
-      key: "tipos",
+      key: "tipos", sortField: "tipos",
       header: "Tipos",
       render: (t) => (
         <div style={{ display: "flex", gap: "var(--space-1)", flexWrap: "nowrap" }}>
@@ -215,7 +215,7 @@ export function ListadoTerceros() {
       ),
     },
     { key: "telefono", header: "Teléfono", monoData: true, sortField: "telefono", render: (t) => t.telefono ?? "—" },
-    { key: "municipio", header: "Municipio", render: (t) => t.municipio_nombre ?? "—" },
+    { key: "municipio", sortField: "municipio", header: "Municipio", render: (t) => t.municipio_nombre ?? "—" },
     {
       key: "acciones",
       header: "",

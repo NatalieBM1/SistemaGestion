@@ -7,7 +7,8 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException, status
-from sqlmodel import Session, select
+from sqlalchemy.orm import aliased
+from sqlmodel import Session, func, select
 
 from app.models.activo import Activo
 from app.models.auditoria import Auditoria
@@ -244,15 +245,21 @@ def valor_serializable(valor: Any) -> Any:
 
 
 def calcular_valor_total(session: Session, remision_id: int) -> Decimal:
-    """Suma (valor_material + valor_flete + valor_camabaja) * numero_viajes de
-    todos los productos asociados a la remisión."""
+    """Valor total de una remisión: suma de (valor_material + valor_flete +
+    valor_camabaja) de todas sus líneas, SIN multiplicar por numero_viajes
+    (los valores de cada línea ya son el total de todos sus viajes).
+
+    Única definición de la regla (decisión del cliente, 2026-10-27): la usan
+    la API de remisiones y facturación (facturacion_service la llama). El
+    listado la replica en SQL en serializar_remisiones; una prueba verifica
+    que ambas den lo mismo."""
     productos = session.exec(
         select(RemisionProducto).where(RemisionProducto.remision_id == remision_id)
     ).all()
-    total = Decimal(0)
-    for p in productos:
-        total += (p.valor_material + p.valor_flete + p.valor_camabaja) * p.numero_viajes
-    return total
+    return sum(
+        (p.valor_material + p.valor_flete + p.valor_camabaja for p in productos),
+        Decimal(0),
+    )
 
 
 def serializar_remision(session: Session, remision: Remision) -> RemisionRead:
@@ -261,7 +268,84 @@ def serializar_remision(session: Session, remision: Remision) -> RemisionRead:
     origen = session.get(Municipio, remision.origen_municipio_id)
     destino = session.get(Municipio, remision.destino_municipio_id)
     vehiculo = session.get(Activo, remision.vehiculo_id) if remision.vehiculo_id else None
+    return _remision_read(
+        remision,
+        cliente_nombre=cliente.nombre if cliente else None,
+        conductor_nombre=conductor.nombre if conductor else None,
+        origen_nombre=origen.nombre if origen else None,
+        destino_nombre=destino.nombre if destino else None,
+        vehiculo_placa=vehiculo.placa if vehiculo else None,
+        valor_total=calcular_valor_total(session, remision.id),
+    )
 
+
+def subconsulta_valor_total():
+    """calcular_valor_total en SQL (correlacionada con Remision), para el
+    listado y para ordenar por valor total en el servidor."""
+    rp = RemisionProducto
+    return (
+        select(func.coalesce(func.sum(rp.valor_material + rp.valor_flete + rp.valor_camabaja), 0))
+        .where(rp.remision_id == Remision.id)
+        .correlate(Remision)
+        .scalar_subquery()
+    )
+
+
+def serializar_remisiones(session: Session, remisiones: list[Remision]) -> list[RemisionRead]:
+    """Lo mismo que serializar_remision para una lista, pero con UNA sola
+    consulta para toda la página (nombres por JOIN y valor total por
+    subconsulta), en vez de ~6 por fila. Usada por el listado; la prueba
+    tests/test_listado_remisiones.py verifica que dé idéntico."""
+    if not remisiones:
+        return []
+    cliente, conductor = aliased(Tercero), aliased(Tercero)
+    origen, destino = aliased(Municipio), aliased(Municipio)
+    valor_total = subconsulta_valor_total()
+    filas = session.exec(
+        select(
+            Remision.id,
+            cliente.nombre,
+            conductor.nombre,
+            origen.nombre,
+            destino.nombre,
+            Activo.placa,
+            valor_total,
+        )
+        .outerjoin(cliente, cliente.id == Remision.cliente_id)
+        .outerjoin(conductor, conductor.id == Remision.conductor_id)
+        .outerjoin(origen, origen.id == Remision.origen_municipio_id)
+        .outerjoin(destino, destino.id == Remision.destino_municipio_id)
+        .outerjoin(Activo, Activo.id == Remision.vehiculo_id)
+        .where(Remision.id.in_([r.id for r in remisiones]))
+    ).all()
+    por_id = {fila[0]: fila[1:] for fila in filas}
+    resultado = []
+    for remision in remisiones:
+        cli, cond, ori, dest, placa, total = por_id[remision.id]
+        resultado.append(
+            _remision_read(
+                remision,
+                cliente_nombre=cli,
+                conductor_nombre=cond,
+                origen_nombre=ori,
+                destino_nombre=dest,
+                vehiculo_placa=placa,
+                valor_total=total,
+            )
+        )
+    return resultado
+
+
+def _remision_read(
+    remision: Remision,
+    *,
+    cliente_nombre: str | None,
+    conductor_nombre: str | None,
+    origen_nombre: str | None,
+    destino_nombre: str | None,
+    vehiculo_placa: str | None,
+    valor_total: Decimal,
+) -> RemisionRead:
     return RemisionRead(
         id=remision.id,
         numero_remision=remision.numero_remision,
@@ -271,18 +355,18 @@ def serializar_remision(session: Session, remision: Remision) -> RemisionRead:
         fecha=remision.fecha,
         forma_pago_id=remision.forma_pago_id,
         cliente_id=remision.cliente_id,
-        cliente_nombre=cliente.nombre if cliente else None,
+        cliente_nombre=cliente_nombre,
         conductor_id=remision.conductor_id,
-        conductor_nombre=conductor.nombre if conductor else None,
+        conductor_nombre=conductor_nombre,
         origen_municipio_id=remision.origen_municipio_id,
-        origen_municipio_nombre=origen.nombre if origen else None,
+        origen_municipio_nombre=origen_nombre,
         destino_municipio_id=remision.destino_municipio_id,
-        destino_municipio_nombre=destino.nombre if destino else None,
+        destino_municipio_nombre=destino_nombre,
         proyecto_id=remision.proyecto_id,
         tramo_id=remision.tramo_id,
         tipo_servicio_id=remision.tipo_servicio_id,
         vehiculo_id=remision.vehiculo_id,
-        vehiculo_placa=vehiculo.placa if vehiculo else None,
+        vehiculo_placa=vehiculo_placa,
         camabaja_id=remision.camabaja_id,
         kilometros=remision.kilometros,
         hora_salida=remision.hora_salida,
@@ -291,7 +375,7 @@ def serializar_remision(session: Session, remision: Remision) -> RemisionRead:
         observaciones=remision.observaciones,
         usuario_creador_id=remision.usuario_creador_id,
         estado_facturacion=remision.estado_facturacion,
-        valor_total=calcular_valor_total(session, remision.id),
+        valor_total=valor_total,
         creado_en=remision.creado_en,
         actualizado_en=remision.actualizado_en,
     )

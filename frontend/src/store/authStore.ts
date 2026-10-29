@@ -76,6 +76,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         roles: data.usuario.roles,
         permisos: data.usuario.permisos ?? [],
       },
+      isInitializing: false,
     });
   },
 

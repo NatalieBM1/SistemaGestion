@@ -13,6 +13,12 @@
   border-right: 1px solid rgba(47, 95, 224, 0.22);
 }
 
+/* Tablas dentro de paneles angostos (ej. Ubicaciones): sin ancho mínimo,
+   el contenido se ajusta al panel en vez de desbordar. */
+.tableCompacta {
+  min-width: 0;
+}
+
 .table th + th,
 .table td + td {
   border-left: 1px solid rgba(47, 95, 224, 0.09);

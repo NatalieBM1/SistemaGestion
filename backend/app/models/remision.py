@@ -5,6 +5,8 @@ from typing import Optional
 from sqlalchemy import CheckConstraint, Column, ForeignKey, Index, Numeric, Text
 from sqlmodel import Field, SQLModel
 
+from app.core.fechas import ahora_utc
+
 
 class Remision(SQLModel, table=True):
     __tablename__ = "remisiones"
@@ -47,10 +49,10 @@ class Remision(SQLModel, table=True):
     observaciones: Optional[str] = Field(default=None, sa_column=Column(Text))
     usuario_creador_id: int = Field(foreign_key="usuarios.id")
     estado_facturacion: str = Field(default="NO_FACTURADA")
-    creado_en: datetime = Field(default_factory=datetime.utcnow)
+    creado_en: datetime = Field(default_factory=ahora_utc)
     actualizado_en: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column_kwargs={"onupdate": datetime.utcnow},
+        default_factory=ahora_utc,
+        sa_column_kwargs={"onupdate": ahora_utc},
     )
 
 

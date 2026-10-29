@@ -1,6 +1,25 @@
+import re
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+_IDENTIFICACION = re.compile(r"^[0-9A-Za-z.\-]{1,30}$")
+
+
+def _limpiar_identificacion(valor: str | None) -> str | None:
+    """Opcional: vacío = sin dato. Cédula/NIT tal cual (texto, conserva
+    ceros a la izquierda): dígitos, letras, punto o guion, hasta 30."""
+    if valor is None:
+        return None
+    valor = valor.strip()
+    if not valor:
+        return None
+    if not _IDENTIFICACION.match(valor):
+        raise ValueError(
+            "La identificación solo puede tener números, letras, punto o guion "
+            "(máximo 30 caracteres)."
+        )
+    return valor
 
 
 class UsuarioCreate(BaseModel):
@@ -8,6 +27,9 @@ class UsuarioCreate(BaseModel):
     email: str
     password: str
     activo: bool = True
+    identificacion: str | None = None
+
+    _validar_identificacion = field_validator("identificacion")(_limpiar_identificacion)
 
 
 class UsuarioUpdate(BaseModel):
@@ -15,6 +37,9 @@ class UsuarioUpdate(BaseModel):
     email: str | None = None
     password: str | None = None
     activo: bool | None = None
+    identificacion: str | None = None
+
+    _validar_identificacion = field_validator("identificacion")(_limpiar_identificacion)
 
 
 class UsuarioRead(BaseModel):
@@ -23,6 +48,7 @@ class UsuarioRead(BaseModel):
     id: int
     nombre: str
     email: str
+    identificacion: str | None = None
     activo: bool
     creado_en: datetime
     actualizado_en: datetime

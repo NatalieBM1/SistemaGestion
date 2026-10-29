@@ -1,6 +1,6 @@
 .grid {
   display: grid;
-  grid-template-columns: minmax(220px, 320px) 1fr;
+  grid-template-columns: minmax(280px, 420px) 1fr;
   gap: var(--space-5);
   align-items: start;
 }
@@ -37,34 +37,28 @@
   overflow-y: auto;
 }
 
-.listItem {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  background: transparent;
+/* Nombre del departamento: botón que lo elige (teclado incluido). */
+.selectorFila {
+  background: none;
   border: none;
-  border-bottom: 1px solid var(--border);
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  font-weight: 500;
   cursor: pointer;
   text-align: left;
-  font-size: var(--text-body);
-  color: var(--text-primary);
 }
 
-.listItem:last-child {
-  border-bottom: none;
-}
-
-.listItemActive {
-  background: var(--accent-tint);
-  color: var(--accent);
+.selectorFila[aria-pressed="true"] {
   font-weight: 600;
 }
 
-.listItemActions {
-  display: flex;
-  gap: var(--space-1);
-  flex-shrink: 0;
+.selectorFila:hover {
+  text-decoration: underline;
+}
+
+.selectorFila:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
 }

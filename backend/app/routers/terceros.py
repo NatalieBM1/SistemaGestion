@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import literal
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlmodel import Session, func, or_, select
 
 from app.core.database import get_session
 from app.core.deps import require_permission
 from app.core.errors import commit_or_409
+from app.core.ordenamiento import clausulas_orden, texto_como_numero
 from app.models.tercero import Tercero, TerceroTipo, TipoTercero
 from app.models.ubicacion import Municipio
 from app.schemas.common import PaginatedResponse
@@ -70,7 +73,7 @@ def _obtener_tercero_o_404(session: Session, tercero_id: int) -> Tercero:
     return tercero
 
 
-COLUMNAS_ORDENABLES_TERCEROS = {"identificacion", "nombre", "telefono"}
+COLUMNAS_ORDENABLES_TERCEROS = {"identificacion", "nombre", "telefono", "tipos", "municipio"}
 
 
 @router.get(
@@ -102,8 +105,27 @@ def listar_terceros(
     if ordenar_por:
         if ordenar_por not in COLUMNAS_ORDENABLES_TERCEROS:
             raise HTTPException(status_code=422, detail=f"No se puede ordenar terceros por '{ordenar_por}'.")
-        columna = getattr(Tercero, ordenar_por)
-        statement = statement.order_by(columna.desc() if sentido == "desc" else columna.asc())
+        if ordenar_por == "tipos":
+            # Los tipos del tercero unidos alfabéticamente ("CLIENTE, CONDUCTOR").
+            expresiones = [
+                select(func.string_agg(TipoTercero.nombre, aggregate_order_by(literal(", "), TipoTercero.nombre)))
+                .join(TerceroTipo, TerceroTipo.tipo_id == TipoTercero.id)
+                .where(TerceroTipo.tercero_id == Tercero.id)
+                .correlate(Tercero)
+                .scalar_subquery()
+            ]
+        elif ordenar_por == "municipio":
+            expresiones = [
+                select(Municipio.nombre).where(Municipio.id == Tercero.municipio_id).scalar_subquery()
+            ]
+        elif ordenar_por == "nombre":
+            expresiones = [Tercero.nombre]
+        else:
+            # identificacion y telefono son texto pero guardan números.
+            expresiones = texto_como_numero(getattr(Tercero, ordenar_por))
+        statement = statement.order_by(*clausulas_orden(expresiones, sentido, Tercero.id))
+    else:
+        statement = statement.order_by(Tercero.id)
     terceros = session.exec(
         statement.offset((page - 1) * page_size).limit(page_size)
     ).all()

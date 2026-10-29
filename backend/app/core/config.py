@@ -6,8 +6,11 @@ ROOT_ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
 
 
 class Settings(BaseSettings):
+    # "production" (por defecto, lo más seguro) o "development". En
+    # desarrollo se ven /docs, /redoc y /openapi.json y no se manda HSTS.
+    # El .env local debe tener APP_ENV=development.
+    app_env: str = "production"
     database_url: str
-    redis_url: str | None = None
     secret_key: str
     # Contraseña del usuario administrador inicial (solo la usa seed_auth.py,
     # una vez, para crear la cuenta si no existe). Sin valor por defecto a
@@ -44,7 +47,22 @@ class Settings(BaseSettings):
     # Tiempo de vida del código de recuperación en minutos
     reset_token_expire_minutes: int = 15
 
+    # ── Límite de intentos (login y recuperación de contraseña) ──────────────
+    # Ver app/core/rate_limit.py. "memory://" guarda los contadores en el
+    # propio proceso; para varios workers/instancias usar un Redis
+    # (ej. "redis://host:6379/1", requiere el paquete redis).
+    rate_limit_enabled: bool = True
+    rate_limit_storage_uri: str = "memory://"
+
+    # ── Pool de conexiones a Postgres (ver core/database.py) ──────────────────
+    db_pool_size: int = 3
+    db_max_overflow: int = 7
+
     model_config = SettingsConfigDict(env_file=ROOT_ENV_FILE, extra="ignore")
+
+    @property
+    def es_produccion(self) -> bool:
+        return self.app_env.strip().lower() != "development"
 
     @property
     def cors_origins_list(self) -> list[str]:

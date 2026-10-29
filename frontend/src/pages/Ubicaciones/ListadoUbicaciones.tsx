@@ -22,11 +22,15 @@ import {
   Modal,
   PageHeader,
   SelectorFilasPorPagina,
+  Table,
   guardarFilasPorPagina,
   leerFilasPorPaginaGuardadas,
   rangoRegistros,
   useToast,
+  type TableColumn,
 } from "../../components/ui";
+import tableStyles from "../../components/ui/Table.module.css";
+import { useOrdenamiento } from "../../hooks/useOrdenamiento";
 import { canWrite } from "../../lib/permissions";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
@@ -69,9 +73,13 @@ export function ListadoUbicaciones() {
   const [editingMunicipio, setEditingMunicipio] = useState<Municipio | null>(null);
   const [municipioFormError, setMunicipioFormError] = useState<string | null>(null);
 
+  // Orden en el servidor (las dos listas están paginadas).
+  const { ordenamiento: ordenDeptos, alternar: alternarOrdenDeptos } = useOrdenamiento();
+  const { ordenamiento: ordenMunicipios, alternar: alternarOrdenMunicipios } = useOrdenamiento();
+
   const { data: departamentos, isLoading: cargandoDeptos, isError: errorDeptos, refetch: refetchDeptos } = useQuery({
-    queryKey: ["departamentos", deptoPage, deptoPageSize, searchDepto],
-    queryFn: () => listDepartamentos(deptoPage, searchDepto, deptoPageSize),
+    queryKey: ["departamentos", deptoPage, deptoPageSize, searchDepto, ordenDeptos],
+    queryFn: () => listDepartamentos(deptoPage, searchDepto, deptoPageSize, ordenDeptos),
   });
 
   const {
@@ -80,8 +88,9 @@ export function ListadoUbicaciones() {
     isError: errorMunicipios,
     refetch: refetchMunicipios,
   } = useQuery({
-    queryKey: ["municipios-de-departamento", selectedDepto?.id, municipioPage, municipioPageSize, searchMunicipio],
-    queryFn: () => listMunicipiosDeDepartamento(selectedDepto!.id, municipioPage, searchMunicipio, municipioPageSize),
+    queryKey: ["municipios-de-departamento", selectedDepto?.id, municipioPage, municipioPageSize, searchMunicipio, ordenMunicipios],
+    queryFn: () =>
+      listMunicipiosDeDepartamento(selectedDepto!.id, municipioPage, searchMunicipio, municipioPageSize, ordenMunicipios),
     enabled: selectedDepto != null,
   });
 
@@ -144,6 +153,68 @@ export function ListadoUbicaciones() {
     onError: (error) => setMunicipioFormError(getApiErrorMessage(error, "No se pudo guardar el municipio.")),
   });
 
+  const columnaDane = <T extends { codigo_dane: string }>(): TableColumn<T> => ({
+    key: "codigo_dane",
+    header: "Código DANE",
+    sortField: "codigo_dane",
+    monoData: true,
+    render: (fila) => fila.codigo_dane,
+  });
+
+  const columnasDeptos: TableColumn<Departamento>[] = [
+    {
+      key: "nombre",
+      header: "Departamento",
+      sortField: "nombre",
+      render: (d) => (
+        <button
+          type="button"
+          className={styles.selectorFila}
+          aria-pressed={selectedDepto?.id === d.id}
+          onClick={() => {
+            setSelectedDepto(d);
+            setSearchMunicipio("");
+            setMunicipioPage(1);
+          }}
+        >
+          {d.nombre}
+        </button>
+      ),
+    },
+    columnaDane<Departamento>(),
+    {
+      key: "acciones",
+      header: "Acciones",
+      align: "right",
+      render: (d) => (
+        <IconButton
+          label={puedeEscribir ? `Editar ${d.nombre}` : READ_ONLY_TITLE}
+          icon={<Pencil size={14} />}
+          onClick={() => openEditDepto(d)}
+          disabled={!puedeEscribir}
+        />
+      ),
+    },
+  ];
+
+  const columnasMunicipios: TableColumn<Municipio>[] = [
+    { key: "nombre", header: "Municipio", sortField: "nombre", render: (m) => m.nombre },
+    columnaDane<Municipio>(),
+    {
+      key: "acciones",
+      header: "Acciones",
+      align: "right",
+      render: (m) => (
+        <IconButton
+          label={puedeEscribir ? `Editar ${m.nombre}` : READ_ONLY_TITLE}
+          icon={<Pencil size={14} />}
+          onClick={() => openEditMunicipio(m)}
+          disabled={!puedeEscribir}
+        />
+      ),
+    },
+  ];
+
   return (
     <PageHeader title="Ubicaciones" breadcrumb={["Datos", "Ubicaciones"]}>
     <div className={styles.grid}>
@@ -190,31 +261,21 @@ export function ListadoUbicaciones() {
               <EmptyState title="Sin departamentos" description="No hay departamentos que coincidan." />
             </div>
           )}
-          {(departamentos?.items ?? []).map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              className={[styles.listItem, selectedDepto?.id === d.id ? styles.listItemActive : ""].join(" ")}
-              onClick={() => {
-                setSelectedDepto(d);
-                setSearchMunicipio("");
-                setMunicipioPage(1);
+          {!errorDeptos && (cargandoDeptos || (departamentos?.items.length ?? 0) > 0) && (
+            <Table
+              columns={columnasDeptos}
+              data={departamentos?.items ?? []}
+              getRowId={(d) => d.id}
+              isLoading={cargandoDeptos}
+              compacta
+              getRowClassName={(d) => (selectedDepto?.id === d.id ? tableStyles.rowSelected : undefined)}
+              ordenamiento={ordenDeptos}
+              onOrdenar={(campo) => {
+                alternarOrdenDeptos(campo);
+                setDeptoPage(1);
               }}
-            >
-              <span>{d.nombre}</span>
-              <span className={styles.listItemActions}>
-                <IconButton
-                  label={puedeEscribir ? `Editar ${d.nombre}` : READ_ONLY_TITLE}
-                  icon={<Pencil size={14} />}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openEditDepto(d);
-                  }}
-                  disabled={!puedeEscribir}
-                />
-              </span>
-            </button>
-          ))}
+            />
+          )}
         </div>
         {departamentos && (
           <div className={crudStyles.pagination}>
@@ -307,21 +368,20 @@ export function ListadoUbicaciones() {
                   <EmptyState title="Sin municipios" description="Este departamento no tiene municipios registrados." />
                 </div>
               )}
-              {(municipios?.items ?? []).map((m) => (
-                <div key={m.id} className={styles.listItem} style={{ cursor: "default" }}>
-                  <span>
-                    {m.nombre} <span className="font-mono-data" style={{ color: "var(--text-secondary)" }}>({m.codigo_dane})</span>
-                  </span>
-                  <span className={styles.listItemActions}>
-                    <IconButton
-                      label={puedeEscribir ? `Editar ${m.nombre}` : READ_ONLY_TITLE}
-                      icon={<Pencil size={14} />}
-                      onClick={() => openEditMunicipio(m)}
-                      disabled={!puedeEscribir}
-                    />
-                  </span>
-                </div>
-              ))}
+              {!errorMunicipios && (cargandoMunicipios || (municipios?.items.length ?? 0) > 0) && (
+                <Table
+                  columns={columnasMunicipios}
+                  data={municipios?.items ?? []}
+                  getRowId={(m) => m.id}
+                  isLoading={cargandoMunicipios}
+                  compacta
+                  ordenamiento={ordenMunicipios}
+                  onOrdenar={(campo) => {
+                    alternarOrdenMunicipios(campo);
+                    setMunicipioPage(1);
+                  }}
+                />
+              )}
             </div>
             {municipios && (
               <div className={crudStyles.pagination}>

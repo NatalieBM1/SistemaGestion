@@ -49,3 +49,6 @@ tmp_*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Diferencias de valor total (Parte 6.1, sesión 4): análisis con datos reales del cliente
+backups/diferencias_valor_total_remisiones.csv

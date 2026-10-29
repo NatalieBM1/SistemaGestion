@@ -20,8 +20,12 @@ import {
   Input,
   Modal,
   PageHeader,
+  Table,
+  ThOrdenable,
   useToast,
+  type TableColumn,
 } from "../../components/ui";
+import { ordenarEnCliente, useOrdenamiento } from "../../hooks/useOrdenamiento";
 import { formatMoney } from "../../lib/format";
 import { formatNumeroRemision } from "../../lib/formatNumeroRemision";
 import { usePageTitle } from "../../store/pageTitleStore";
@@ -52,7 +56,15 @@ export function DetalleFactura() {
   const [seleccionadas, setSeleccionadas] = useState<Set<number>>(new Set());
   const [quitarTarget, setQuitarTarget] = useState<number | null>(null);
 
-  const { data: remisiones, isLoading } = useQuery({
+  const { ordenamiento, alternar: alternarOrden } = useOrdenamiento();
+  const { ordenamiento: ordenCandidatas, alternar: alternarOrdenCandidatas } = useOrdenamiento();
+
+  const {
+    data: remisiones,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["factura-remisiones", numeroFactura],
     queryFn: () => getRemisionesDeFactura(numeroFactura),
     enabled: Boolean(numeroFactura),
@@ -106,9 +118,62 @@ export function DetalleFactura() {
   });
 
   const idsYaEnFactura = new Set(activas.map((r) => r.remision_id));
-  const elegibles = (candidatas?.items ?? []).filter(
-    (r) => r.estado_facturacion !== "FACTURADA" && !idsYaEnFactura.has(r.id),
+  const elegibles = ordenarEnCliente(
+    (candidatas?.items ?? []).filter(
+      (r) => r.estado_facturacion !== "FACTURADA" && !idsYaEnFactura.has(r.id),
+    ),
+    ordenCandidatas,
+    {
+      numero_remision: (r) => r.numero_remision,
+      fecha: (r) => r.fecha,
+      placa: (r) => r.vehiculo_placa,
+      estado: (r) => r.estado_facturacion,
+    },
   );
+
+  // Las remisiones de una factura vienen completas: orden en cliente.
+  type FilaFactura = NonNullable<typeof remisiones>[number];
+  const filasFactura = ordenarEnCliente<FilaFactura>(remisiones ?? [], ordenamiento, {
+    numero_remision: (r) => r.numero_remision,
+    tipo: (r) => r.tipo_facturacion,
+    valor: (r) => Number(r.valor_facturado),
+    estado: (r) => (r.anulada ? "Anulada" : "Activa"),
+  });
+  const columnasFactura: TableColumn<FilaFactura>[] = [
+    {
+      key: "remision",
+      header: "Remisión",
+      sortField: "numero_remision",
+      render: (r) => (
+        <Link to={`/remisiones/${r.remision_id}`} style={{ color: "var(--accent)", fontWeight: 500 }} className="font-mono-data">
+          {formatNumeroRemision(r.numero_remision) || r.remision_id}
+        </Link>
+      ),
+    },
+    { key: "tipo", header: "Tipo", sortField: "tipo", render: (r) => r.tipo_facturacion },
+    {
+      key: "valor",
+      header: "Valor facturado",
+      sortField: "valor",
+      monoData: true,
+      render: (r) => formatMoney(r.valor_facturado),
+    },
+    {
+      key: "estado",
+      header: "Estado",
+      sortField: "estado",
+      render: (r) => <Badge variant={r.anulada ? "danger" : "success"}>{r.anulada ? "Anulada" : "Activa"}</Badge>,
+    },
+    {
+      key: "acciones",
+      header: "Acciones",
+      align: "right",
+      render: (r) =>
+        !r.anulada && (
+          <IconButton label="Quitar de la factura" icon={<X size={16} />} onClick={() => setQuitarTarget(r.remision_id)} />
+        ),
+    },
+  ];
 
   const toggleCandidata = (id: number) => {
     setSeleccionadas((prev) => {
@@ -207,47 +272,28 @@ export function DetalleFactura() {
         </div>
       </div>
 
-      {!isLoading && (remisiones ?? []).length === 0 ? (
+      {isError ? (
+        <EmptyState
+          title="No se pudo cargar"
+          description="Hubo un problema al traer las remisiones de esta factura."
+          action={
+            <Button variant="primary" onClick={() => refetch()}>
+              Reintentar
+            </Button>
+          }
+        />
+      ) : !isLoading && filasFactura.length === 0 ? (
         <EmptyState title="Sin remisiones" description="Esta factura no tiene remisiones asociadas." />
       ) : (
-        <div className={tableStyles.wrapper}>
-          <table className={tableStyles.table}>
-            <thead>
-              <tr>
-                <th>Remisión</th>
-                <th>Tipo</th>
-                <th>Valor facturado</th>
-                <th>Estado</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {(remisiones ?? []).map((r) => (
-                <tr key={r.id} className={r.anulada ? tableStyles.rowDisabled : undefined}>
-                  <td>
-                    <Link to={`/remisiones/${r.remision_id}`} style={{ color: "var(--accent)", fontWeight: 500 }} className="font-mono-data">
-                      {formatNumeroRemision(r.numero_remision) || r.remision_id}
-                    </Link>
-                  </td>
-                  <td>{r.tipo_facturacion}</td>
-                  <td className="font-mono-data">{formatMoney(r.valor_facturado)}</td>
-                  <td>
-                    <Badge variant={r.anulada ? "danger" : "success"}>{r.anulada ? "Anulada" : "Activa"}</Badge>
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    {!r.anulada && (
-                      <IconButton
-                        label="Quitar de la factura"
-                        icon={<X size={16} />}
-                        onClick={() => setQuitarTarget(r.remision_id)}
-                      />
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table
+          columns={columnasFactura}
+          data={filasFactura}
+          getRowId={(r) => r.id}
+          isLoading={isLoading}
+          getRowClassName={(r) => (r.anulada ? tableStyles.rowDisabled : undefined)}
+          ordenamiento={ordenamiento}
+          onOrdenar={alternarOrden}
+        />
       )}
 
       <Modal
@@ -339,10 +385,19 @@ export function DetalleFactura() {
                       onChange={alternarTodas}
                     />
                   </th>
-                  <th>Número</th>
-                  <th>Fecha</th>
-                  <th>Placa</th>
-                  <th>Estado</th>
+                  <ThOrdenable campo="numero_remision" ordenamiento={ordenCandidatas} onOrdenar={alternarOrdenCandidatas}>
+                    Número
+                  </ThOrdenable>
+                  <ThOrdenable campo="fecha" ordenamiento={ordenCandidatas} onOrdenar={alternarOrdenCandidatas}>
+                    Fecha
+                  </ThOrdenable>
+                  <ThOrdenable campo="placa" ordenamiento={ordenCandidatas} onOrdenar={alternarOrdenCandidatas}>
+                    Placa
+                  </ThOrdenable>
+                  <ThOrdenable campo="estado" ordenamiento={ordenCandidatas} onOrdenar={alternarOrdenCandidatas}>
+                    Estado
+                  </ThOrdenable>
+                  {/* Se calcula por fila con otra consulta: no es ordenable. */}
                   <th style={{ textAlign: "right" }}>Pendiente</th>
                 </tr>
               </thead>

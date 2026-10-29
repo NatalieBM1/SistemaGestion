@@ -15,7 +15,7 @@ from email.mime.text import MIMEText
 from app.core.config import settings
 
 
-def _smtp_configurado() -> bool:
+def smtp_configurado() -> bool:
     return bool(settings.smtp_host and settings.smtp_user and settings.smtp_password)
 
 
@@ -31,7 +31,7 @@ def enviar_codigo_recuperacion(*, email: str, nombre: str, codigo: str) -> None:
         ValueError: Si SMTP no está configurado en las variables de entorno.
         smtplib.SMTPException: Si el servidor rechaza la conexión o el envío.
     """
-    if not _smtp_configurado():
+    if not smtp_configurado():
         raise ValueError(
             "El servidor de correo no está configurado. "
             "Completa SMTP_HOST, SMTP_USER y SMTP_PASSWORD en el archivo .env."

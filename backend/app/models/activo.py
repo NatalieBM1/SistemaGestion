@@ -3,6 +3,8 @@ from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
+from app.core.fechas import ahora_utc
+
 
 class EmpresaGrupo(SQLModel, table=True):
     __tablename__ = "empresas_grupo"
@@ -21,4 +23,4 @@ class Activo(SQLModel, table=True):
     empresa_id: int = Field(foreign_key="empresas_grupo.id")
     es_segunda_mano: bool = Field(default=False)
     bloqueado: bool = Field(default=False)
-    creado_en: datetime = Field(default_factory=datetime.utcnow)
+    creado_en: datetime = Field(default_factory=ahora_utc)

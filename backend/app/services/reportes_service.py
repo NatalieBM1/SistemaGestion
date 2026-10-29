@@ -103,9 +103,13 @@ COLUMNAS_TEXTO = {
     "ID del cliente",
     "ID cliente",
     "ID del conductor",
+    "ID del usuario",
+    "ID usuario",
+    "ID usuario factura",
 }
 
 COLUMNAS_FECHA = {"Fecha", "Fecha de factura"}
+COLUMNAS_HORA = {"Hora llegada", "Hola salida"}
 
 
 def _aplicar_filtros(
@@ -188,7 +192,9 @@ def _datos_comunes(cat: _Catalogos, remision: Remision) -> dict[str, Any]:
         "tipo_servicio": tipo_servicio.nombre if tipo_servicio else None,
         "observaciones": remision.observaciones,
         "remision_agresur": remision.remision_agresur,
-        "usuario_creador_id": usuario_creador.id if usuario_creador else None,
+        # Identificación (cédula) del usuario, no su id interno; vacío si
+        # el usuario no la tiene cargada (no se inventa).
+        "usuario_creador_identificacion": usuario_creador.identificacion if usuario_creador else None,
         "usuario_creador_nombre": usuario_creador.nombre if usuario_creador else None,
         "estado_facturacion": remision.estado_facturacion,
     }
@@ -230,8 +236,14 @@ def _escribir_xlsx(filas: list[dict[str, Any]], columnas: list[str]) -> BytesIO:
                 celda.value = valor
                 if valor is not None:
                     celda.number_format = "yyyy-mm-dd"
+            elif nombre in COLUMNAS_HORA:
+                celda.value = valor
+                if valor is not None:
+                    celda.number_format = "hh:mm"
             elif isinstance(valor, Decimal):
-                celda.value = float(valor)
+                # Como en la hoja de referencia: entero si no tiene
+                # centavos (250000, no 250000.0); con centavos, tal cual.
+                celda.value = int(valor) if valor == valor.to_integral_value() else float(valor)
             else:
                 celda.value = valor
 
@@ -299,7 +311,7 @@ def generar_reporte_general(
             "Tipo de transporte": comunes["tipo_servicio"],
             "Observaciones": comunes["observaciones"],
             "Remision AGRESUR": comunes["remision_agresur"],
-            "ID del usuario": comunes["usuario_creador_id"],
+            "ID del usuario": comunes["usuario_creador_identificacion"],
             "Usuario": comunes["usuario_creador_nombre"],
             "Estado": comunes["estado_facturacion"],
         }
@@ -394,10 +406,12 @@ def generar_reporte_facturadas(
                     "Conductor": comunes["conductor_nombre"],
                     "Tipo de transporte": comunes["tipo_servicio"],
                     "Usuario": comunes["usuario_creador_nombre"],
-                    "ID usuario": comunes["usuario_creador_id"],
+                    "ID usuario": comunes["usuario_creador_identificacion"],
                     "ID factura": factura.id if factura else None,
                     "Usuario Factura": usuario_facturacion.nombre if usuario_facturacion else None,
-                    "ID usuario factura": usuario_facturacion.id if usuario_facturacion else None,
+                    "ID usuario factura": (
+                        usuario_facturacion.identificacion if usuario_facturacion else None
+                    ),
                     "Número de factura": factura.numero_factura if factura else None,
                     "Fecha de factura": factura.fecha_factura if factura else None,
                     "Valor flete": totales["valor_flete"],

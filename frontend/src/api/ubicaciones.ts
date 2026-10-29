@@ -1,5 +1,10 @@
 import { apiClient } from "./client";
 import type { PaginatedResponse } from "./catalogos";
+import type { Ordenamiento } from "../hooks/useOrdenamiento";
+
+function paramsOrden(orden?: Ordenamiento) {
+  return orden?.campo && orden.sentido ? { ordenar_por: orden.campo, sentido: orden.sentido } : {};
+}
 
 export interface Departamento {
   id: number;
@@ -18,9 +23,10 @@ export async function listDepartamentos(
   page: number,
   q: string,
   pageSize = 50,
+  orden?: Ordenamiento,
 ): Promise<PaginatedResponse<Departamento>> {
   const { data } = await apiClient.get<PaginatedResponse<Departamento>>("/api/ubicaciones/departamentos", {
-    params: { page, page_size: pageSize, q: q || undefined },
+    params: { page, page_size: pageSize, q: q || undefined, ...paramsOrden(orden) },
   });
   return data;
 }
@@ -40,10 +46,11 @@ export async function listMunicipiosDeDepartamento(
   page: number,
   q: string,
   pageSize = 50,
+  orden?: Ordenamiento,
 ): Promise<PaginatedResponse<Municipio>> {
   const { data } = await apiClient.get<PaginatedResponse<Municipio>>(
     `/api/ubicaciones/departamentos/${departamentoId}/municipios`,
-    { params: { page, page_size: pageSize, q: q || undefined } },
+    { params: { page, page_size: pageSize, q: q || undefined, ...paramsOrden(orden) } },
   );
   return data;
 }

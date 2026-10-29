@@ -5,6 +5,7 @@ from sqlmodel import Session, SQLModel, func, select
 from app.core.database import get_session
 from app.core.deps import require_permission
 from app.core.errors import commit_or_409
+from app.core.ordenamiento import clausulas_orden
 from app.schemas.common import PaginatedResponse
 
 
@@ -86,8 +87,11 @@ def build_simple_crud_router(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=f"No se puede ordenar {nombre_singular} por '{ordenar_por}'.",
                 )
-            columna = getattr(model, ordenar_por)
-            statement = statement.order_by(columna.desc() if sentido == "desc" else columna.asc())
+            statement = statement.order_by(
+                *clausulas_orden([getattr(model, ordenar_por)], sentido, model.id)
+            )
+        else:
+            statement = statement.order_by(model.id)
         total = session.exec(
             select(func.count()).select_from(statement.subquery())
         ).one()

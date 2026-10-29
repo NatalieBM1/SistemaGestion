@@ -5,7 +5,7 @@ llamándola, y ningún otro punto del código debe tocar ese campo a mano.
 """
 
 import re
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
@@ -13,9 +13,10 @@ from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
 from app.core.errors import flush_or_409
+from app.core.fechas import ahora_utc
 from app.models.auditoria import Auditoria
 from app.models.facturacion import Factura, RemisionFacturacion
-from app.models.remision import Remision, RemisionProducto
+from app.models.remision import Remision
 from app.models.tercero import Tercero
 from app.schemas.facturacion import (
     FacturaRead,
@@ -23,6 +24,7 @@ from app.schemas.facturacion import (
     RemisionFacturacionRead,
     ResumenFacturasRead,
 )
+from app.services.remision_service import calcular_valor_total
 
 # Acepta el formato histórico ("F-1234": letra, guion, dígitos) y el
 # formato real vigente del cliente ("F-7-468": letra, guion, dígitos,
@@ -35,15 +37,9 @@ NUMERO_FACTURA_REGEX = re.compile(r"^[A-Z]-\d+(-\d+)?$")
 
 
 def calcular_valor_total_remision(session: Session, remision_id: int) -> Decimal:
-    """valor_total_remision = suma de (valor_material + valor_flete +
-    valor_camabaja) de todos sus remision_productos."""
-    productos = session.exec(
-        select(RemisionProducto).where(RemisionProducto.remision_id == remision_id)
-    ).all()
-    return sum(
-        (p.valor_material + p.valor_flete + p.valor_camabaja for p in productos),
-        Decimal(0),
-    )
+    """Valor total de la remisión. La regla vive en un solo lugar:
+    remision_service.calcular_valor_total."""
+    return calcular_valor_total(session, remision_id)
 
 
 def calcular_valor_facturado_activo(session: Session, remision_id: int) -> Decimal:
@@ -533,7 +529,7 @@ def anular_facturacion(
             detail="Esta facturación ya estaba anulada.",
         )
     remision_facturacion.anulada = True
-    remision_facturacion.anulada_en = datetime.utcnow()
+    remision_facturacion.anulada_en = ahora_utc()
     session.add(remision_facturacion)
     flush_or_409(session)
 

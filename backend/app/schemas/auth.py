@@ -29,11 +29,6 @@ class ForgotPasswordRequest(BaseModel):
     email: str
 
 
-class VerifyResetCodeRequest(BaseModel):
-    email: str
-    codigo: str
-
-
 class ResetPasswordRequest(BaseModel):
     email: str
     codigo: str

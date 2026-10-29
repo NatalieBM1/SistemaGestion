@@ -21,7 +21,6 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
-  const loadUserFromMe = useAuthStore((state) => state.loadUserFromMe);
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -34,8 +33,9 @@ export function LoginPage() {
   const onSubmit = async (values: LoginFormValues) => {
     setServerError(null);
     try {
+      // login() ya deja el usuario con roles y permisos (la respuesta de
+      // /login trae lo mismo que /me): no hace falta un segundo fetch.
       await login(values.email, values.password);
-      await loadUserFromMe();
       navigate("/", { replace: true });
     } catch (error) {
       setServerError(getApiErrorMessage(error, "No se pudo iniciar sesión."));

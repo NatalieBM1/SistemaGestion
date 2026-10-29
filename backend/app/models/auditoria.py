@@ -5,6 +5,8 @@ from sqlalchemy import Column, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
+from app.core.fechas import ahora_utc
+
 
 class Auditoria(SQLModel, table=True):
     __tablename__ = "auditoria"
@@ -20,7 +22,7 @@ class Auditoria(SQLModel, table=True):
     detalle_json: dict[str, Any] = Field(
         default_factory=dict, sa_column=Column(JSONB)
     )
-    creado_en: datetime = Field(default_factory=datetime.utcnow)
+    creado_en: datetime = Field(default_factory=ahora_utc)
 
 
 class CargaExcel(SQLModel, table=True):
@@ -36,4 +38,4 @@ class CargaExcel(SQLModel, table=True):
     detalle_errores: Optional[dict[str, Any]] = Field(
         default=None, sa_column=Column(JSONB)
     )
-    creado_en: datetime = Field(default_factory=datetime.utcnow)
+    creado_en: datetime = Field(default_factory=ahora_utc)

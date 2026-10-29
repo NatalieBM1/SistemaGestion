@@ -8,6 +8,8 @@ from sqlmodel import Session, func, or_, select
 from app.core.database import get_session
 from app.core.deps import get_current_active_user, require_permission
 from app.core.errors import commit_or_409, flush_or_409
+from app.core.ordenamiento import clausulas_orden
+from app.core.uploads import leer_excel_subido
 from app.models.activo import Activo
 from app.models.auditoria import CargaExcel
 from app.models.catalogos import Prefijo
@@ -82,6 +84,7 @@ COLUMNAS_ORDENABLES_REMISIONES = {
     "cliente",
     "estado",
     "placa",
+    "valor_total",
 }
 
 
@@ -96,17 +99,18 @@ def _clausula_orden_remisiones(ordenar_por: str, sentido: str):
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"No se puede ordenar remisiones por '{ordenar_por}'.",
         )
-    desc = sentido == "desc"
+    if ordenar_por == "valor_total":
+        return clausulas_orden([svc.subconsulta_valor_total()], sentido, Remision.id)
     if ordenar_por == "fecha":
-        return [Remision.fecha.desc() if desc else Remision.fecha.asc()]
+        return clausulas_orden([Remision.fecha], sentido, Remision.id)
     if ordenar_por == "estado":
-        return [Remision.estado_facturacion.desc() if desc else Remision.estado_facturacion.asc()]
+        return clausulas_orden([Remision.estado_facturacion], sentido, Remision.id)
     if ordenar_por == "cliente":
         subq = select(Tercero.nombre).where(Tercero.id == Remision.cliente_id).scalar_subquery()
-        return [subq.desc() if desc else subq.asc()]
+        return clausulas_orden([subq], sentido, Remision.id)
     if ordenar_por == "placa":
         subq = select(Activo.placa).where(Activo.id == Remision.vehiculo_id).scalar_subquery()
-        return [subq.desc() if desc else subq.asc()]
+        return clausulas_orden([subq], sentido, Remision.id)
     # numero_remision: por prefijo (texto) y luego por consecutivo numérico.
     # El consecutivo es texto libre para prefijos manuales (puede no ser
     # dígitos) — se castea solo cuando sí lo es, para no romper el ORDER BY.
@@ -115,9 +119,7 @@ def _clausula_orden_remisiones(ordenar_por: str, sentido: str):
         (Remision.consecutivo.op("~")(r"^\d+$"), cast(Remision.consecutivo, Integer)),
         else_=0,
     )
-    if desc:
-        return [prefijo_subq.desc(), consecutivo_numerico.desc()]
-    return [prefijo_subq.asc(), consecutivo_numerico.asc()]
+    return clausulas_orden([prefijo_subq, consecutivo_numerico, Remision.consecutivo], sentido, Remision.id)
 
 
 def _remision_ids_por_factura(texto: str):
@@ -201,7 +203,7 @@ def listar_remisiones(
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()
-    items = [svc.serializar_remision(session, r) for r in remisiones]
+    items = svc.serializar_remisiones(session, list(remisiones))
     return PaginatedResponse(items=items, total=total, page=page, page_size=page_size)
 
 
@@ -462,7 +464,7 @@ async def actualizar_nit_por_excel(
     usuario: Usuario = Depends(get_current_active_user),
     session: Session = Depends(get_session),
 ):
-    contenido = await file.read()
+    contenido = await leer_excel_subido(file)
     filas_totales, exitosas, errores_count, detalle = nit_excel_svc.procesar_actualizar_nit(
         session, contenido, usuario.id
     )

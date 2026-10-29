@@ -855,3 +855,363 @@ ve un mensaje claro en vez de una pantalla vacía o un error en consola.
   Render, ambigüedad del ODS, etc.) sigue igual, sin tocar.
 
 ---
+
+# Sesión 4 (2026-10-27) — Seguridad del inicio de sesión
+
+## Parte 1 — Límite de intentos (rate limiting)
+
+### Qué cambia para el usuario
+Nada en el uso normal. Si alguien (o un programa) intenta adivinar una
+contraseña o un código de recuperación, después de unos pocos intentos
+la app responde **"Demasiados intentos. Por seguridad, espera N
+minutos/segundos antes de volver a intentarlo."** y se muestra en el
+mismo recuadro rojo de error de la pantalla.
+
+| Acción | Límite |
+|---|---|
+| Iniciar sesión | 20 por minuto por IP, 5 por minuto por correo |
+| Pedir código de recuperación | 3 por hora |
+| Usar el código para cambiar la contraseña | 10 cada 15 minutos |
+
+Cada límite se cuenta **dos veces**: por dirección IP y por correo
+(en el login el cupo por IP es más amplio para que varios usuarios de
+una misma oficina, con la misma IP pública, no se bloqueen entre sí). Así,
+dos personas en IPs distintas no se bloquean entre sí, y un atacante no
+puede esquivar el límite cambiando de IP sobre una misma cuenta.
+
+### Archivos
+- `backend/app/core/rate_limit.py` — nuevo: configuración de slowapi,
+  límite por correo, respuesta 429 en español con `Retry-After`.
+- `backend/app/routers/auth.py` — límites en `/login`,
+  `/forgot-password`, `/verify-reset-code`, `/reset-password`.
+- `backend/app/main.py` — registra el limitador y los manejadores de
+  429; CORS expone `Retry-After` al frontend.
+- `backend/app/core/config.py` — `RATE_LIMIT_ENABLED`,
+  `RATE_LIMIT_STORAGE_URI` (opcionales).
+- `backend/Dockerfile` — uvicorn arranca con `--proxy-headers
+  --forwarded-allow-ips='*'` (necesario en Render, ver abajo).
+- `backend/requirements.txt` — `slowapi`, `limits` (+ dependencias) y
+  `httpx` (solo para pruebas).
+- `frontend/src/api/errors.ts` — mensaje de respaldo para un 429 sin
+  texto.
+- `backend/tests/conftest.py`, `backend/tests/test_rate_limit.py` —
+  nuevos.
+
+### Pruebas
+- 10 pruebas nuevas contra una base SQLite en memoria (nunca la real):
+  misma IP se bloquea al pasar el límite; dos IPs distintas no se
+  bloquean entre sí; mismo correo rotando IPs se bloquea; login normal
+  sigue funcionando; `Retry-After` presente y coherente.
+- Probado en vivo con uvicorn y los mismos flags de Render.
+- `pytest` 15/15, `tsc` y `npm run build` OK. Datos reales intactos
+  (1.000 remisiones / 91 facturas / 1.613 terceros); backup previo en
+  `backups/`.
+
+### Pasos para Render
+1. **Comando de arranque** (ya está en el `Dockerfile`, no hay que
+   cambiar nada en el panel si se usa Docker):
+   `alembic upgrade head && python -m app.seed_auth && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'`
+   Si en el panel de Render hay un "Docker Command" personalizado, debe
+   incluir esos dos flags.
+2. **Migraciones**: esta parte no agrega ninguna.
+3. **Variables de entorno**: ninguna obligatoria. Opcionales:
+   `RATE_LIMIT_ENABLED` (por defecto `true`) y `RATE_LIMIT_STORAGE_URI`
+   (por defecto `memory://`; solo hace falta un Redis si algún día se
+   corre con varias instancias). Los límites (login 20/min por IP y
+   5/min por correo, etc.) están en el código, no hay que configurarlos.
+
+---
+
+## Parte 2 — Recuperación de contraseña y sesiones
+
+### Qué cambia para el usuario
+- Si alguien escribe mal el código de recuperación **5 veces**, ese
+  código deja de servir (aunque después se escriba bien) y hay que pedir
+  uno nuevo. Pedir un código nuevo reinicia el contador.
+- El código vence a los 15 minutos y sirve **una sola vez**.
+- "Olvidé mi contraseña" responde exactamente lo mismo exista o no el
+  correo: nadie puede averiguar qué correos están registrados.
+- Al **cambiar la contraseña** (por recuperación o desde
+  Administración) o al **desactivar** un usuario, se cierran todas sus
+  sesiones abiertas en cualquier equipo. Las sesiones de los demás no se
+  ven afectadas, y nadie pierde la sesión por el despliegue.
+
+### Detalle técnico
+- Campos nuevos en `usuarios`: `reset_intentos` y `token_version`
+  (migración `a3c9e1f04b72`, idempotente, valor 0 para los existentes).
+  Verificada desde una base vacía, re-aplicada, con downgrade/upgrade y
+  sobre un clon de la base real.
+- El código se guarda como HMAC-SHA256 (no en claro) y se compara con
+  `hmac.compare_digest` (tiempo constante).
+- El correo del código se envía en segundo plano: un SMTP lento o caído
+  ya no demora ni rompe la respuesta (queda en el log).
+- **`verify-reset-code` eliminado**: busqué en el frontend y ninguna
+  pantalla lo usaba (solo estaba declarado en `api/auth.ts`, también
+  quitado). El flujo valida el código al cambiar la contraseña.
+
+### Pruebas
+12 pruebas nuevas (`tests/test_recuperacion_y_tokens.py`): token viejo
+rechazado tras el reset (acceso y refresco), bloqueo al 5.º intento,
+contador reiniciado con código nuevo y al usarlo bien, código de un solo
+uso y vencido, respuesta idéntica con correo inexistente (también sin
+SMTP), fallo de SMTP sin romper la respuesta, admin que cambia contraseña
+o desactiva → tokens inválidos.
+
+## Parte 3 — Cabeceras HTTP, documentación, CORS y archivos subidos
+
+- **Cabeceras de seguridad en la API**: `X-Content-Type-Options`,
+  `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`,
+  `X-XSS-Protection: 0` (la obsoleta, apagada) y HSTS solo en
+  producción.
+- **Cabeceras del frontend**: en `render.yaml`, sección `headers` del
+  sitio estático (Render no lee archivos `_headers`). Si el sitio no se
+  creó desde el blueprint, cargarlas en Settings → Headers.
+- **/docs, /redoc y /openapi.json**: ocultos en producción, visibles en
+  desarrollo. Lo controla la variable `APP_ENV` (por defecto
+  `production`).
+- **CORS**: solo GET, POST, PUT, PATCH, DELETE y OPTIONS (los que usa el
+  frontend) y las cabeceras `Authorization` y `Content-Type`.
+- **Excel subidos** (facturación masiva, eliminar/actualizar facturas,
+  actualizar NIT): solo `.xlsx` (si no, 415), máximo 10 MB (413,
+  comprobado antes de cargarlo entero) y el contenido debe ser un Excel
+  real, no solo la extensión (422 con un mensaje que explica qué hacer).
+- 19 pruebas nuevas (`tests/test_seguridad_http.py`), incluido un
+  preflight simulado desde el frontend, archivo grande, extensión falsa
+  y archivo dañado.
+
+## Parte 4 — Rendimiento
+
+- **Listado de remisiones**: pasó de **118 consultas** a la base por
+  página (571 con 100 filas) a **3**. La respuesta es idéntica: se
+  compararon 122 páginas (12.150 filas, 376.650 campos) antes y después,
+  0 diferencias. Queda una prueba permanente que lo verifica.
+- **Conexiones a la base**: máximo 10 (pool de 3 + 7 extra, con
+  verificación de conexiones caídas), dentro de las 25 que permite
+  Render free. Ajustable con `DB_POOL_SIZE` / `DB_MAX_OVERFLOW`.
+- **Correo**: ya no bloquea la petición (hecho en la Parte 2).
+
+## Parte 5 — Limpieza de bajo riesgo
+
+- `REDIS_URL` eliminado (no se usaba en ninguna parte): configuración,
+  `.env.example`, README y `docker-compose.yml`.
+- La constante del permiso de administración quedó definida en un solo
+  lugar.
+- El inicio de sesión hace una petición menos (la respuesta del login ya
+  trae los datos del usuario; se comprobó con una prueba que son
+  idénticos a los de `/me`).
+
+## Parte 6 — Limpieza de alto riesgo
+
+### Valor total de una remisión — NO se unificó
+Hay dos cálculos y **no dan lo mismo en 282 de las 1.000 remisiones**
+(todas las que tienen alguna línea con más de un viaje):
+
+| | Cálculo | Dónde se usa |
+|---|---|---|
+| A | (material + flete + cama baja) **× número de viajes** | Campo `valor_total` de la API de remisiones (columna "Valor total" del listado de Remisiones; ver corrección en la sesión 5) |
+| B | material + flete + cama baja, **sin multiplicar** | Facturación: saldo, estado, validaciones, panel de facturación |
+
+**La que parece correcta es la B (sin viajes):**
+- En las **261 remisiones ya facturadas** que difieren, lo facturado
+  coincide exactamente con B; con A, en ninguna.
+- En el informe del programa anterior el flete ya es el total de la
+  línea. Ejemplo: GTM-29826, 154 m³ de tierra en 11 viajes, flete
+  2.002.000 = 154 × 13.000. Con A daría 22.022.000.
+- Las otras 21 aún no están facturadas.
+
+Lista completa (número, fecha, estado, A, B, facturado, viajes por
+línea): `backups/diferencias_valor_total_remisiones.csv`.
+**Actualización (mismo día):** el cliente confirmó la regla B. Ya está
+unificada; ver "Seguimiento" al final de esta sesión.
+
+### Fechas
+Se fijó un único criterio: **hora UTC sin zona horaria**, que es como
+están definidas hoy todas las columnas de fecha en la base y como ya
+está guardado todo. Se reemplazó la función obsoleta en todos los
+modelos y servicios a la vez. **No se modificó ningún dato guardado.**
+9 pruebas: vencimiento de códigos y sesiones, creación/actualización de
+registros y anulación de facturación (sobre una copia de la base, sin
+dejar cambios).
+
+## Cierre de la sesión
+
+- `pytest`: 79 pruebas pasan + 1 "falla esperada" (la del valor total,
+  a propósito). `tsc` y `npm run build`: OK.
+- `alembic upgrade head` desde una base vacía: aplica las 6 migraciones
+  sin errores y el esquema coincide con los modelos (`alembic check`).
+- **Base real intacta**: 1.000 remisiones, 91 facturas, 1.613 terceros;
+  el contenido es idéntico, línea por línea, al backup tomado antes de
+  empezar. Todas las pruebas corrieron sobre SQLite en memoria o sobre
+  una copia (`remisiones_prueba`).
+
+### Pasos para Render (toda la sesión)
+1. **Comando de arranque** (ya en el `Dockerfile`):
+   `alembic upgrade head && python -m app.seed_auth && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'`
+2. **Migraciones**: se aplican solas al arrancar (`a3c9e1f04b72` y las
+   pendientes anteriores, como la de prefijos).
+3. **Variables de la API**: `APP_ENV=production` (ya en `render.yaml`);
+   `SMTP_*` configuradas para la recuperación de contraseña; opcionales
+   `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`, `RATE_LIMIT_ENABLED`,
+   `RATE_LIMIT_STORAGE_URI`. `REDIS_URL` ya no se usa.
+4. **Frontend**: cabeceras en `render.yaml` (o en el panel si el sitio
+   no usa el blueprint).
+5. **En local**: correr `alembic upgrade head` antes de levantar el
+   backend (sin eso el login falla) y tener `APP_ENV=development` en
+   `.env` (ya agregado).
+
+### Pendiente
+- Configurar una cuenta de correo real en `SMTP_*` (local y Render).
+- Revisar en Render qué IP llega en `X-Forwarded-For`.
+- Siguiente fase (documentado, no hecho): sesión en cookies httpOnly +
+  CSP en lugar de `localStorage`; lista negra de tokens con Redis;
+  índices trigram (`pg_trgm`) para las búsquedas; auditoría en catálogos
+  y al cambiar la contraseña de un usuario desde Administración.
+
+## Seguimiento — Valor total unificado (regla B, sin viajes)
+
+- Una sola regla para todo el sistema: **valor total = material + flete
+  + cama baja de cada línea, sin multiplicar por el número de viajes**.
+- Comprobado sobre una copia de la base, antes vs después del cambio:
+  - **Facturación sin ningún cambio** en las 1.000 remisiones: valor
+    total, valor facturado, saldo y estado iguales.
+  - **Ninguna remisión facturada cambió de valor** (718 facturadas o
+    parciales).
+  - **Reportes Excel idénticos** celda por celda (general: 1.227 filas;
+    facturadas: 719).
+  - Solo cambia el campo `valor_total` que entrega la API de remisiones
+    en las 282 remisiones con varios viajes; ahora coincide con
+    facturación. **Corrección (sesión 5):** ese valor sí se ve en la
+    columna "Valor total" del listado de Remisiones, que antes mostraba
+    el valor multiplicado por los viajes y ahora el correcto.
+- Prueba sobre las 1.000 remisiones: **cero diferencias**. `pytest`: 81
+  pruebas pasan.
+- Prueba manual (login, recuperación, importación de Excel) correcta,
+  salvo la recepción real del correo: las variables `SMTP_*` del `.env`
+  local tienen todavía el valor de ejemplo.
+
+---
+
+# Sesión 5 (2026-10-28) — Orden de columnas, filas por página y reportes exactos
+
+Esta sesión partió de lo hecho el 25-10 (sesión 3): se verificó cada punto
+contra lo pedido y se corrigió lo que faltaba. Sin commits ni ramas. Todas
+las pruebas usaron la copia de la base (`remisiones_prueba`), nunca la real.
+
+## Bloque A — Columnas ordenables
+
+**Cómo funciona**: clic en el encabezado → ascendente (▲) → descendente
+(▼) → sin orden. También con teclado (Enter / Espacio) y con `aria-sort`
+para lectores de pantalla. Las columnas de casillas y de Acciones no se
+ordenan.
+
+**Qué se agregó o corrigió hoy**
+- **Pantallas nuevas con orden**: Ubicaciones (los dos paneles ahora son
+  tablas, por Nombre y Código DANE), el detalle de una factura (y la
+  lista del modal "Agregar remisiones") y Roles.
+- **Columnas que antes no se podían ordenar**: Valor total (Remisiones),
+  Remisiones y Valor total facturado (Facturación), Tipos y Municipio
+  (Terceros), Empresa (Activos), Roles (Usuarios).
+- **Números como números**: el número de factura se ordena por sus
+  partes (F-7-468 antes que F-7-1000); la identificación y el teléfono
+  de terceros como número; el número de remisión por prefijo y
+  consecutivo; fechas como fecha.
+- **El orden se conserva al paginar**: antes, al ordenar por una columna
+  con valores repetidos (fecha, estado, cliente…), una fila podía
+  aparecer en dos páginas o en ninguna. Ahora cada lista desempata
+  siempre de la misma forma. Los vacíos van al final.
+- El orden se hace en el servidor en las listas paginadas (con lista
+  cerrada de columnas permitidas: cualquier otra se rechaza) y en el
+  navegador en las que se cargan completas.
+- En Remisiones, ordenar no borra la selección.
+
+**Verificación**: 23 pruebas automáticas recorren todas las páginas de 8
+listas con cada columna en ambos sentidos (sin filas repetidas ni
+perdidas). En el navegador (Playwright, 1492×702 @1,25 y 390 px):
+**62/62 comprobaciones correctas**. Capturas en `capturas/bloqueA_*`.
+
+> **Corrección a lo informado en la sesión 4**: la columna "Valor total"
+> del listado de Remisiones **sí** muestra el valor que cambió con la
+> unificación. En las 282 remisiones con varios viajes, antes se veía el
+> valor multiplicado por los viajes; ahora se ve el valor correcto (el
+> mismo que usa facturación).
+
+## Bloque B — Filas por página
+
+El selector (10 · 25 · 50 · 100) con el total ("1–25 de 1.000") ya estaba
+en todas las listas paginadas y recuerda la elección por lista. Se
+completaron los estados que faltaban: carga en Ubicaciones, y error con
+"Reintentar" / vacío en Roles y en el detalle de factura.
+
+**Verificación en el navegador: 99/99 correctas** en Remisiones,
+Facturación, Terceros, Activos, Usuarios, Catálogos y Ubicaciones, en
+ambos tamaños: selector, rango, se recuerda al recargar, carga, vacío,
+error + Reintentar, y funciona aunque el navegador no permita guardar
+datos. Capturas en `capturas/bloqueB_*`.
+
+## Bloque C — Reportes con las columnas exactas
+
+**Encabezados**: los dos reportes ya tenían exactamente las 34 y 32
+columnas pedidas, en orden y con la ortografía del original ("Hola
+salida", "Numero de remision", "Número de factura"). No hubo que renombrar
+nada.
+
+**Formato corregido**
+- ID del usuario / ID usuario / ID usuario factura: ahora como texto
+  (antes número).
+- Horas: con formato `hh:mm` (antes sin formato).
+- Valores en pesos: número entero cuando no tienen centavos (250000, no
+  250000.0), como en la hoja de referencia; los centavos que existen se
+  conservan.
+
+**Importador corregido** (lo encontró la prueba de ida y vuelta)
+- No reconocía la columna "Hola salida": **al reimportar se perdía la
+  hora de salida**.
+- No entendía los estados como los escribe el reporte (NO_FACTURADA,
+  FACTURADA_PARCIAL).
+- Quitaba los ceros a la izquierda de las identificaciones.
+
+**Verificación**
+1. Encabezados comparados carácter por carácter con la lista pedida y con
+   las hojas de referencia: idénticos.
+2. Tipo y formato por columna (fechas, horas, identificaciones, valores),
+   fila 1 con los encabezados, sin celdas combinadas ni título, número de
+   remisión con el formato aprobado, y en facturadas una fila por remisión
+   y factura (718).
+3. **Ida y vuelta**: se generó el reporte general, se borraron las
+   remisiones en la copia de la base, se reimportó el archivo con el
+   importador existente y se comparó campo por campo con lo original:
+   **1.000 de 1.000 remisiones y 1.225 de 1.225 líneas coinciden**, 0
+   columnas sin reconocer, 0 remisiones con error. Único aviso: el ya
+   conocido de GTS-6467 (una línea sin producto en el dato original).
+   Todo dentro de una transacción que se deshizo al final.
+   (La prueba de la sesión 3 no llegaba a comparar datos: el importador
+   omitía las 1.000 remisiones porque ya existían.)
+4. **Columnas vacías por falta de dato** (no se inventó ningún valor):
+
+| Columna | Vacía | De dónde saldría | Propuesta |
+|---|---|---|---|
+| ID del conductor, Valor de comisión, Valor de costo, Unidad de medida, Id Producto | 0,1% (solo GTS-6467) | Casi nunca faltan | Nada que hacer |
+| ODS | 100% | No hay órdenes de servicio cargadas; en la importación histórica no quedó claro qué columna del Excel es la ODS | Definir esa columna con el cliente y cargarla |
+| Proyecto / Tramo | 100% | Hay 24 proyectos, pero ninguno de estas 1.000 remisiones | Nada (no aplica a esta muestra) |
+| Kilometros, Cama Baja, Hora llegada, Hola salida, Remision AGRESUR | 97% / 99% / 98% / 45% / 52% | El Excel de origen ya venía así | Nada |
+| **Usuario / ID del usuario** | Llenas, pero **no reales** | Las 1.000 históricas dicen "Administrador del Sistema" / "1": el nombre real quedó solo en Observaciones y el sistema no guarda la cédula de los usuarios | Agregar un campo de identificación a los usuarios y asignar el creador real a las históricas a partir de esa nota. **Requiere tu aprobación** (modifica datos) |
+
+Los dos archivos de ejemplo de `formatos/` se regeneraron con el formato
+corregido.
+
+## Cierre
+
+- `pytest`: **123 pruebas pasan**. `tsc` y `npm run build`: OK.
+- `alembic upgrade head` desde una base vacía: 6 migraciones sin errores
+  y el esquema coincide con los modelos.
+- **Base real intacta**: 1.000 remisiones, 91 facturas, 1.613 terceros;
+  las 27 tablas tienen exactamente los mismos datos que el backup previo.
+- **Pasos para Render**: sin cambios respecto de la sesión 4 (esta sesión
+  no agrega migraciones ni variables de entorno).
+
+### Pendiente
+- Aprobar (o no) la propuesta de Usuario / ID del usuario.
+- Definir de dónde sale la ODS.
+- Reiniciar los servidores locales para tomar el código nuevo.
+
+---

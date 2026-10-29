@@ -290,7 +290,7 @@ export function ListadoRemisiones() {
       ),
     },
     { key: "placa", header: "Placa", monoData: true, sortField: "placa", render: (r) => r.vehiculo_placa ?? "—" },
-    { key: "valor_total", header: "Valor total", align: "right", render: (r) => formatMoney(r.valor_total) },
+    { key: "valor_total", sortField: "valor_total", header: "Valor total", align: "right", render: (r) => formatMoney(r.valor_total) },
     {
       key: "acciones",
       header: "Acciones",

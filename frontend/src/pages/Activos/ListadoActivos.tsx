@@ -150,7 +150,7 @@ export function ListadoActivos() {
     { key: "placa", header: "Placa", monoData: true, sortField: "placa", render: (a) => a.placa },
     { key: "tipo_activo", header: "Tipo", sortField: "tipo_activo", render: (a) => a.tipo_activo },
     { key: "clase", header: "Clase", sortField: "clase", render: (a) => a.clase },
-    { key: "empresa", header: "Empresa", render: (a) => a.empresa_nombre ?? "—" },
+    { key: "empresa", sortField: "empresa", header: "Empresa", render: (a) => a.empresa_nombre ?? "—" },
     {
       key: "estado",
       header: "Estado",

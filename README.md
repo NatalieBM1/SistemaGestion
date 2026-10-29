@@ -83,13 +83,13 @@ cp frontend/.env.example frontend/.env
 
 Edita `.env` con tus valores.
 
-### 2. Base de datos y Redis
+### 2. Base de datos
 
 ```bash
 docker compose up -d
 ```
 
-Levanta Postgres en `5432` y Redis en `6379`.
+Levanta Postgres en `5432`.
 
 ### 3. Backend
 

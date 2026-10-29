@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { listTodosLosRoles, listTodosLosUsuarios } from "../../api/admin";
-import { PageHeader, Table, type TableColumn } from "../../components/ui";
-import { useOrdenamiento } from "../../hooks/useOrdenamiento";
+import { Button, EmptyState, PageHeader, Table, type TableColumn } from "../../components/ui";
+import { ordenarEnCliente, useOrdenamiento } from "../../hooks/useOrdenamiento";
 import { usePageTitle } from "../../store/pageTitleStore";
 import type { RolAdmin } from "../../api/admin";
 
@@ -14,7 +14,9 @@ export function Roles() {
   usePageTitle("Roles");
   const { ordenamiento, alternar: alternarOrden } = useOrdenamiento();
 
-  const { data: roles, isLoading } = useQuery({
+  // Roles se cargan completos (no hay paginación en el servidor): el orden
+  // se hace en cliente.
+  const { data: roles, isLoading, isError, refetch } = useQuery({
     queryKey: ["roles-admin"],
     queryFn: listTodosLosRoles,
   });
@@ -24,20 +26,18 @@ export function Roles() {
     queryFn: listTodosLosUsuarios,
   });
 
-  const items: RolConConteo[] = (roles ?? []).map((rol) => ({
-    ...rol,
-    cantidadUsuarios: (usuarios ?? []).filter((u) => u.roles.includes(rol.nombre)).length,
-  }));
-
-  if (ordenamiento.campo && ordenamiento.sentido) {
-    const campo = ordenamiento.campo as "nombre" | "permisos" | "usuarios";
-    const signo = ordenamiento.sentido === "asc" ? 1 : -1;
-    items.sort((a, b) => {
-      if (campo === "nombre") return signo * a.nombre.localeCompare(b.nombre, "es-CO");
-      if (campo === "permisos") return signo * (a.permisos.length - b.permisos.length);
-      return signo * (a.cantidadUsuarios - b.cantidadUsuarios);
-    });
-  }
+  const items = ordenarEnCliente<RolConConteo>(
+    (roles ?? []).map((rol) => ({
+      ...rol,
+      cantidadUsuarios: (usuarios ?? []).filter((u) => u.roles.includes(rol.nombre)).length,
+    })),
+    ordenamiento,
+    {
+      nombre: (r) => r.nombre,
+      permisos: (r) => r.permisos.length,
+      usuarios: (r) => r.cantidadUsuarios,
+    },
+  );
 
   const columns: TableColumn<RolConConteo>[] = [
     {
@@ -56,14 +56,28 @@ export function Roles() {
 
   return (
     <PageHeader title="Roles" subtitle="Haz clic en un rol para editar sus permisos." breadcrumb={["Análisis", "Administración", "Roles"]}>
-      <Table
-        columns={columns}
-        data={items}
-        getRowId={(row) => row.id}
-        isLoading={isLoading}
-        ordenamiento={ordenamiento}
-        onOrdenar={alternarOrden}
-      />
+      {isError ? (
+        <EmptyState
+          title="No se pudo cargar"
+          description="Hubo un problema al traer los roles."
+          action={
+            <Button variant="primary" onClick={() => refetch()}>
+              Reintentar
+            </Button>
+          }
+        />
+      ) : !isLoading && items.length === 0 ? (
+        <EmptyState title="Sin roles" description="Todavía no hay roles creados." />
+      ) : (
+        <Table
+          columns={columns}
+          data={items}
+          getRowId={(row) => row.id}
+          isLoading={isLoading}
+          ordenamiento={ordenamiento}
+          onOrdenar={alternarOrden}
+        />
+      )}
     </PageHeader>
   );
 }

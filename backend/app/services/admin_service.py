@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 
 from app.models.usuario import Permiso, RolPermiso, Usuario, UsuarioRol
 
+# Única definición: routers/admin.py la importa de aquí.
 ADMIN_PERMISO = "usuarios.administrar"
 
 MENSAJE_SIN_ADMINISTRADOR = (

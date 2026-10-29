@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
@@ -23,6 +25,30 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
+
+
+def hash_codigo_recuperacion(usuario_id: int, codigo: str) -> str:
+    """HMAC-SHA256 del código de recuperación, atado al usuario. Un código
+    de 6 dígitos no necesita bcrypt (el límite de intentos es lo que frena
+    la fuerza bruta) y así se puede comparar con hmac.compare_digest."""
+    mensaje = f"reset:{usuario_id}:{codigo}".encode()
+    return hmac.new(settings.secret_key.encode(), mensaje, hashlib.sha256).hexdigest()
+
+
+def verificar_codigo_recuperacion(usuario_id: int, codigo: str, guardado: str) -> bool:
+    return hmac.compare_digest(hash_codigo_recuperacion(usuario_id, codigo), guardado)
+
+
+def datos_token(usuario) -> dict:
+    """Claims comunes a access y refresh: id y versión de token."""
+    return {"sub": str(usuario.id), "ver": usuario.token_version}
+
+
+def token_vigente(payload: dict, usuario) -> bool:
+    """El token sigue valiendo si su versión coincide con la del usuario.
+    Los tokens emitidos antes de existir token_version no traen "ver" y
+    cuentan como versión 0, para no cerrar todas las sesiones al desplegar."""
+    return payload.get("ver", 0) == usuario.token_version
 
 
 def _crear_token(data: dict, expires_delta: timedelta, token_type: str) -> str:

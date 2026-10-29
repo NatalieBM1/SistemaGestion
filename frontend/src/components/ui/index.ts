@@ -9,6 +9,7 @@ export { Select } from "./Select";
 export { Switch } from "./Switch";
 export { Table } from "./Table";
 export type { TableColumn } from "./Table";
+export { ThOrdenable } from "./ThOrdenable";
 export { ToastContainer, useToast } from "./Toast";
 export { TopProgressBar } from "./TopProgressBar";
 export { IconButton } from "./IconButton";

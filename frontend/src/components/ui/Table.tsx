@@ -1,5 +1,6 @@
 import { useState, type ReactNode, type UIEvent } from "react";
 import type { Ordenamiento } from "../../hooks/useOrdenamiento";
+import { ThOrdenable } from "./ThOrdenable";
 import styles from "./Table.module.css";
 
 export interface TableColumn<T> {
@@ -28,6 +29,8 @@ interface TableProps<T> {
    * columna con `sortField`. Viene de `useOrdenamiento()`. */
   ordenamiento?: Ordenamiento;
   onOrdenar?: (campo: string) => void;
+  /** Sin ancho mínimo, para tablas dentro de paneles angostos. */
+  compacta?: boolean;
 }
 
 export function Table<T>({
@@ -38,6 +41,7 @@ export function Table<T>({
   getRowClassName,
   ordenamiento,
   onOrdenar,
+  compacta,
 }: TableProps<T>) {
   const [scrolled, setScrolled] = useState(false);
 
@@ -48,45 +52,27 @@ export function Table<T>({
   return (
     <div className={styles.wrapper} data-scrolled={scrolled} onScroll={handleScroll}>
       {isLoading && <span className={styles.srOnly} role="status">Cargando…</span>}
-      <table className={styles.table}>
+      <table className={compacta ? `${styles.table} ${styles.tableCompacta}` : styles.table}>
         <thead>
           <tr>
             {columns.map((column, index) => {
-              const esOrdenable = Boolean(column.sortField && onOrdenar);
-              const activo = esOrdenable && ordenamiento?.campo === column.sortField;
-              const sentidoActivo = activo ? ordenamiento!.sentido : null;
-              const ariaSort = esOrdenable
-                ? sentidoActivo === "asc"
-                  ? "ascending"
-                  : sentidoActivo === "desc"
-                    ? "descending"
-                    : "none"
-                : undefined;
-              return (
-                <th
+              const className =
+                [column.align === "right" ? styles.alignRight : "", index === 0 ? styles.stickyCol : ""]
+                  .filter(Boolean)
+                  .join(" ") || undefined;
+              return column.sortField && onOrdenar ? (
+                <ThOrdenable
                   key={column.key}
-                  aria-sort={ariaSort as "ascending" | "descending" | "none" | undefined}
-                  className={[
-                    column.align === "right" ? styles.alignRight : "",
-                    index === 0 ? styles.stickyCol : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
+                  campo={column.sortField}
+                  ordenamiento={ordenamiento ?? { campo: null, sentido: null }}
+                  onOrdenar={onOrdenar}
+                  className={className}
                 >
-                  {esOrdenable ? (
-                    <button
-                      type="button"
-                      className={styles.thOrdenable}
-                      onClick={() => onOrdenar!(column.sortField!)}
-                    >
-                      {column.header}
-                      <span className={styles.flechaOrden} aria-hidden="true">
-                        {sentidoActivo === "asc" ? "▲" : sentidoActivo === "desc" ? "▼" : ""}
-                      </span>
-                    </button>
-                  ) : (
-                    column.header
-                  )}
+                  {column.header}
+                </ThOrdenable>
+              ) : (
+                <th key={column.key} className={className}>
+                  {column.header}
                 </th>
               );
             })}

@@ -85,7 +85,36 @@ ESTADO_MAP = {
     "FACTURADA PARCIALMENTE": "FACTURADA_PARCIAL",
     "NO FACTURADA": "NO_FACTURADA",
     "NO APLICA FACTURACION": "NO_FACTURADA",
+    # Como los escribe el reporte general del sistema (ida y vuelta).
+    "FACTURADA_PARCIAL": "FACTURADA_PARCIAL",
+    "NO_FACTURADA": "NO_FACTURADA",
 }
+
+# Columnas que este importador lee, de la hoja "Registros" o del reporte
+# general del sistema (que usa "Hola salida", con el error del formato del
+# cliente, en vez de "Hora salida").
+COLUMNAS_LEIDAS = {
+    "Numero de remision", "Fecha", "Forma de pago", "ODS", "ID del cliente", "Proyecto",
+    "Tramo", "Origen", "Destino", "Kilometros", "Vehiculos", "Cama Baja", "Hora llegada",
+    "Hora salida", "Hola salida", "ID del conductor", "Tipo de transporte", "Observaciones",
+    "Producto", "Cantidad", "Unidad de medida", "Valor Material", "Valor Flete",
+    "Numero de viajes", "Valor de comision", "Valor de costo", "Valor cama baja",
+    "Remision AGRESUR", "Usuario", "Factura", "Fecha Factura",
+    "Vr Facturado", "Estado",
+}
+# Columnas conocidas que se ignoran a propósito: ids internos del sistema
+# que se generan de nuevo al importar, o datos que se resuelven por nombre
+# (el cliente y el conductor se buscan por "ID del ...", no por nombre).
+COLUMNAS_INFORMATIVAS = {
+    "ID", "Id Producto", "ID del usuario", "Cliente", "Conductor", "IngRegistro",
+    "Vr Parcial Facturado", "Tipo Facturación",
+}
+
+
+def columnas_no_reconocidas(df: pd.DataFrame) -> set[str]:
+    return {
+        c for c in df.columns if not c.startswith("_")
+    } - COLUMNAS_LEIDAS - COLUMNAS_INFORMATIVAS
 
 
 def _normalizar(texto: Any) -> str:
@@ -98,6 +127,18 @@ def _texto_o_none(valor: Any) -> str | None:
         return None
     texto = str(valor).strip()
     return texto if texto and texto.lower() != "nan" else None
+
+
+def _identificacion(valor: Any) -> str | None:
+    """NIT/cédula como texto. Si Excel lo trae como número (la hoja
+    histórica), se quita el ".0"; si viene como texto (el reporte del
+    sistema), se respeta tal cual, con sus ceros a la izquierda."""
+    if valor is None or (isinstance(valor, float) and pd.isna(valor)):
+        return None
+    if isinstance(valor, (int, float)):
+        return str(int(valor))
+    texto = str(valor).strip()
+    return texto or None
 
 
 def _split_prefijo(numero: str) -> tuple[str | None, str | None]:
@@ -357,15 +398,14 @@ def importar_remisiones(
                     if prefijo is None:
                         raise ErrorFila(f"prefijo {primera['_prefijo']!r} no encontrado (no debería pasar)")
 
-                    cliente_id_txt = str(int(primera["ID del cliente"]))
+                    cliente_id_txt = _identificacion(primera["ID del cliente"])
                     cliente = session.exec(select(Tercero).where(Tercero.identificacion == cliente_id_txt)).first()
                     if cliente is None:
                         raise ErrorFila(f"cliente {cliente_id_txt!r} no existe como tercero")
 
                     conductor = None
-                    cond_txt = _texto_o_none(primera.get("ID del conductor"))
-                    if cond_txt is not None:
-                        cond_id_txt = str(int(float(cond_txt)))
+                    cond_id_txt = _identificacion(primera.get("ID del conductor"))
+                    if cond_id_txt is not None:
                         conductor = session.exec(select(Tercero).where(Tercero.identificacion == cond_id_txt)).first()
 
                     origen, origen_fallback = _resolver_municipio(session, _texto_o_none(primera.get("Origen")), cache_municipio, municipio_fallback)
@@ -403,7 +443,7 @@ def importar_remisiones(
                     fecha_val = primera["Fecha"]
                     fecha = fecha_val.date() if hasattr(fecha_val, "date") else fecha_val
 
-                    hora_salida = _texto_o_none(primera.get("Hora salida"))
+                    hora_salida = _texto_o_none(primera.get("Hora salida", primera.get("Hola salida")))
                     hora_llegada = _texto_o_none(primera.get("Hora llegada"))
 
                     estado_excel = _normalizar(primera["Estado"])

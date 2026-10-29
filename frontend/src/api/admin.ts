@@ -5,6 +5,7 @@ export interface UsuarioAdmin {
   id: number;
   nombre: string;
   email: string;
+  identificacion: string | null;
   activo: boolean;
   creado_en: string;
   actualizado_en: string;

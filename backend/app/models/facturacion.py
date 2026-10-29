@@ -5,6 +5,8 @@ from typing import Optional
 from sqlalchemy import CheckConstraint, Column, Index, Numeric
 from sqlmodel import Field, SQLModel
 
+from app.core.fechas import ahora_utc
+
 
 class Factura(SQLModel, table=True):
     __tablename__ = "facturas"
@@ -12,7 +14,7 @@ class Factura(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     numero_factura: str = Field(unique=True)
     fecha_factura: date
-    creado_en: datetime = Field(default_factory=datetime.utcnow)
+    creado_en: datetime = Field(default_factory=ahora_utc)
 
 
 class RemisionFacturacion(SQLModel, table=True):
@@ -34,4 +36,4 @@ class RemisionFacturacion(SQLModel, table=True):
     usuario_id: Optional[int] = Field(default=None, foreign_key="usuarios.id")
     anulada: bool = Field(default=False)
     anulada_en: Optional[datetime] = Field(default=None)
-    creado_en: datetime = Field(default_factory=datetime.utcnow)
+    creado_en: datetime = Field(default_factory=ahora_utc)

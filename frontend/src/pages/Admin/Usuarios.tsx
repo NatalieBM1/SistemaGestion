@@ -42,6 +42,7 @@ const PERMISO_ADMIN = "usuarios.administrar";
 interface UsuarioFormValues {
   nombre: string;
   email: string;
+  identificacion: string;
   password: string;
   activo: boolean;
   rolesSeleccionados: number[];
@@ -50,6 +51,7 @@ interface UsuarioFormValues {
 const DEFAULT_VALUES: UsuarioFormValues = {
   nombre: "",
   email: "",
+  identificacion: "",
   password: "",
   activo: true,
   rolesSeleccionados: [],
@@ -112,6 +114,7 @@ export function Usuarios() {
     reset({
       nombre: item.nombre,
       email: item.email,
+      identificacion: item.identificacion ?? "",
       password: "",
       activo: item.activo,
       rolesSeleccionados: (roles ?? []).filter((r) => item.roles.includes(r.nombre)).map((r) => r.id),
@@ -136,6 +139,8 @@ export function Usuarios() {
       const payload: Record<string, unknown> = {
         nombre: values.nombre,
         email: values.email,
+        // Opcional: vacío = sin dato (en los reportes la columna queda vacía).
+        identificacion: values.identificacion.trim() || null,
         activo: values.activo,
       };
       if (!editingItem) payload.password = values.password;
@@ -166,7 +171,7 @@ export function Usuarios() {
     { key: "nombre", header: "Nombre", sortField: "nombre", render: (u) => u.nombre },
     { key: "email", header: "Email", monoData: true, sortField: "email", render: (u) => u.email },
     {
-      key: "roles",
+      key: "roles", sortField: "roles",
       header: "Roles",
       render: (u) => (
         <div style={{ display: "flex", gap: "var(--space-1)", flexWrap: "wrap" }}>
@@ -306,6 +311,21 @@ export function Usuarios() {
             type="email"
             error={errors.email?.message}
             {...register("email", { required: "El email es obligatorio." })}
+          />
+          <Input
+            label="Identificación (cédula)"
+            monoData
+            inputMode="text"
+            placeholder="Opcional"
+            hint="Sale en los reportes como «ID del usuario». Si se deja vacía, esa columna queda vacía."
+            error={errors.identificacion?.message}
+            {...register("identificacion", {
+              maxLength: { value: 30, message: "Máximo 30 caracteres." },
+              pattern: {
+                value: /^\s*[0-9A-Za-z.-]*\s*$/,
+                message: "Solo números, letras, punto o guion.",
+              },
+            })}
           />
           {!editingItem && (
             <Input

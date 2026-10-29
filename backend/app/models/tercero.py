@@ -3,6 +3,8 @@ from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
+from app.core.fechas import ahora_utc
+
 
 class Tercero(SQLModel, table=True):
     __tablename__ = "terceros"
@@ -17,7 +19,7 @@ class Tercero(SQLModel, table=True):
     regimen: Optional[str] = Field(default=None)
     tiene_licencia: Optional[bool] = Field(default=None)
     fecha_vencimiento_licencia: Optional[date] = Field(default=None)
-    creado_en: datetime = Field(default_factory=datetime.utcnow)
+    creado_en: datetime = Field(default_factory=ahora_utc)
 
 
 class TipoTercero(SQLModel, table=True):

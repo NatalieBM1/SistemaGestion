@@ -4,6 +4,7 @@ from sqlmodel import Session, func, select
 from app.core.database import get_session
 from app.core.deps import require_permission
 from app.core.errors import commit_or_409
+from app.core.ordenamiento import clausulas_orden
 from app.core.simple_crud import build_simple_crud_router
 from app.models.activo import Activo, EmpresaGrupo
 from app.schemas.activo import (
@@ -72,7 +73,7 @@ def _serializar_activo(session: Session, activo: Activo) -> ActivoRead:
     )
 
 
-COLUMNAS_ORDENABLES_ACTIVOS = {"placa", "tipo_activo", "clase", "bloqueado"}
+COLUMNAS_ORDENABLES_ACTIVOS = {"placa", "tipo_activo", "clase", "bloqueado", "empresa"}
 
 
 @router.get(
@@ -98,8 +99,13 @@ def listar_activos(
     if ordenar_por:
         if ordenar_por not in COLUMNAS_ORDENABLES_ACTIVOS:
             raise HTTPException(status_code=422, detail=f"No se puede ordenar activos por '{ordenar_por}'.")
-        columna = getattr(Activo, ordenar_por)
-        statement = statement.order_by(columna.desc() if sentido == "desc" else columna.asc())
+        if ordenar_por == "empresa":
+            columna = select(EmpresaGrupo.nombre).where(EmpresaGrupo.id == Activo.empresa_id).scalar_subquery()
+        else:
+            columna = getattr(Activo, ordenar_por)
+        statement = statement.order_by(*clausulas_orden([columna], sentido, Activo.id))
+    else:
+        statement = statement.order_by(Activo.id)
     activos = session.exec(
         statement.offset((page - 1) * page_size).limit(page_size)
     ).all()

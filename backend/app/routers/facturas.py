@@ -1,11 +1,14 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from sqlalchemy import Integer, case, cast
 from sqlmodel import Session, func, select
 
 from app.core.database import get_session
 from app.core.deps import get_current_active_user, require_permission
 from app.core.errors import commit_or_409
+from app.core.ordenamiento import clausulas_orden
+from app.core.uploads import leer_excel_subido
 from app.models.auditoria import CargaExcel
 from app.models.facturacion import Factura, RemisionFacturacion
 from app.models.remision import Remision
@@ -185,7 +188,7 @@ async def facturar_masivo(
     usuario: Usuario = Depends(get_current_active_user),
     session: Session = Depends(get_session),
 ):
-    contenido = await file.read()
+    contenido = await leer_excel_subido(file)
     filas_totales, exitosas, errores_count, detalle = excel_svc.procesar_facturar_masivo(
         session, contenido, usuario.id
     )
@@ -222,7 +225,7 @@ async def eliminar_por_excel(
     usuario: Usuario = Depends(get_current_active_user),
     session: Session = Depends(get_session),
 ):
-    contenido = await file.read()
+    contenido = await leer_excel_subido(file)
     filas_totales, exitosas, errores_count, detalle = excel_svc.procesar_eliminar_por_excel(
         session, contenido, usuario.id
     )
@@ -286,7 +289,7 @@ async def actualizar_por_excel(
     usuario: Usuario = Depends(get_current_active_user),
     session: Session = Depends(get_session),
 ):
-    contenido = await file.read()
+    contenido = await leer_excel_subido(file)
     filas_totales, exitosas, errores_count, detalle = excel_svc.procesar_actualizar_por_excel(
         session, contenido, usuario.id
     )
@@ -313,7 +316,40 @@ async def actualizar_por_excel(
 # --- consulta ---
 
 
-COLUMNAS_ORDENABLES_FACTURAS = {"numero_factura", "fecha_factura"}
+COLUMNAS_ORDENABLES_FACTURAS = {
+    "numero_factura",
+    "fecha_factura",
+    "cantidad_remisiones",
+    "valor_total_facturado",
+}
+
+
+def _parte_numerica(texto, n: int):
+    parte = func.split_part(texto, "-", n)
+    return case((parte.op("~")(r"^\d+$"), cast(parte, Integer)), else_=None)
+
+
+def _subconsulta_activas(columna: str):
+    """Mismos cálculos que serializar_factura (solo facturaciones no
+    anuladas), como subconsulta para poder ordenar en el servidor."""
+    rf = RemisionFacturacion
+    if columna == "cantidad_remisiones":
+        agregado = func.count(func.distinct(rf.remision_id))
+    else:
+        agregado = func.coalesce(func.sum(rf.valor_facturado), 0)
+    return (
+        select(agregado)
+        .where(rf.factura_id == Factura.id, rf.anulada.is_(False))
+        .correlate(Factura)
+        .scalar_subquery()
+    )
+
+
+def _expresiones_numero_factura() -> list:
+    """"F-7-468" se ordena por letra, luego 7 y luego 468 como números
+    (como texto, F-7-1000 quedaría antes que F-7-468)."""
+    numero = Factura.numero_factura
+    return [func.split_part(numero, "-", 1), _parte_numerica(numero, 2), _parte_numerica(numero, 3), numero]
 
 
 @router.get(
@@ -343,12 +379,17 @@ def listar_facturas(
     if ordenar_por:
         if ordenar_por not in COLUMNAS_ORDENABLES_FACTURAS:
             raise HTTPException(status_code=422, detail=f"No se puede ordenar facturas por '{ordenar_por}'.")
-        columna = getattr(Factura, ordenar_por)
-        orden = columna.desc() if sentido == "desc" else columna.asc()
+        if ordenar_por == "numero_factura":
+            expresiones = _expresiones_numero_factura()
+        elif ordenar_por in ("cantidad_remisiones", "valor_total_facturado"):
+            expresiones = [_subconsulta_activas(ordenar_por)]
+        else:
+            expresiones = [getattr(Factura, ordenar_por)]
+        orden = clausulas_orden(expresiones, sentido, Factura.id)
     else:
-        orden = Factura.fecha_factura.desc()
+        orden = [Factura.fecha_factura.desc(), Factura.id.desc()]
     facturas = session.exec(
-        statement.order_by(orden)
+        statement.order_by(*orden)
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()

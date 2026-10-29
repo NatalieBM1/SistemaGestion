@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import literal
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlmodel import Session, func, or_, select
 
 from app.core.database import get_session
 from app.core.deps import require_permission
 from app.core.errors import commit_or_409
+from app.core.ordenamiento import clausulas_orden
 from app.core.security import hash_password
 from app.core.simple_crud import build_simple_crud_router
 from app.models.usuario import Permiso, Rol, RolPermiso, Usuario, UsuarioRol
@@ -22,8 +25,7 @@ from app.schemas.admin import (
 )
 from app.schemas.common import PaginatedResponse
 from app.services import admin_service as svc
-
-ADMIN_PERMISO = "usuarios.administrar"
+from app.services.admin_service import ADMIN_PERMISO
 
 router = APIRouter(
     prefix="/api/admin",
@@ -62,6 +64,7 @@ def _serializar_usuario(session: Session, usuario: Usuario) -> UsuarioRead:
         id=usuario.id,
         nombre=usuario.nombre,
         email=usuario.email,
+        identificacion=usuario.identificacion,
         activo=usuario.activo,
         creado_en=usuario.creado_en,
         actualizado_en=usuario.actualizado_en,
@@ -135,7 +138,7 @@ def _verificar_nombre_rol_unico(
 # --- usuarios ---
 
 
-COLUMNAS_ORDENABLES_USUARIOS = {"nombre", "email", "activo"}
+COLUMNAS_ORDENABLES_USUARIOS = {"nombre", "email", "activo", "roles"}
 
 
 @router.get("/usuarios", response_model=PaginatedResponse[UsuarioRead])
@@ -156,8 +159,19 @@ def listar_usuarios(
     if ordenar_por:
         if ordenar_por not in COLUMNAS_ORDENABLES_USUARIOS:
             raise HTTPException(status_code=422, detail=f"No se puede ordenar usuarios por '{ordenar_por}'.")
-        columna = getattr(Usuario, ordenar_por)
-        statement = statement.order_by(columna.desc() if sentido == "desc" else columna.asc())
+        if ordenar_por == "roles":
+            columna = (
+                select(func.string_agg(Rol.nombre, aggregate_order_by(literal(", "), Rol.nombre)))
+                .join(UsuarioRol, UsuarioRol.rol_id == Rol.id)
+                .where(UsuarioRol.usuario_id == Usuario.id)
+                .correlate(Usuario)
+                .scalar_subquery()
+            )
+        else:
+            columna = getattr(Usuario, ordenar_por)
+        statement = statement.order_by(*clausulas_orden([columna], sentido, Usuario.id))
+    else:
+        statement = statement.order_by(Usuario.id)
     usuarios = session.exec(
         statement.offset((page - 1) * page_size).limit(page_size)
     ).all()
@@ -177,6 +191,7 @@ def crear_usuario(payload: UsuarioCreate, session: Session = Depends(get_session
     usuario = Usuario(
         nombre=payload.nombre,
         email=payload.email,
+        identificacion=payload.identificacion,
         password_hash=hash_password(payload.password),
         activo=payload.activo,
     )
@@ -200,6 +215,10 @@ def actualizar_usuario(
     password = datos.pop("password", None)
     if password:
         usuario.password_hash = hash_password(password)
+    # Cambiar la contraseña o desactivar al usuario cierra sus sesiones
+    # abiertas: los JWT emitidos con la versión anterior dejan de valer.
+    if password or (datos.get("activo") is False and usuario.activo):
+        usuario.token_version += 1
     for campo, valor in datos.items():
         setattr(usuario, campo, valor)
     session.add(usuario)
