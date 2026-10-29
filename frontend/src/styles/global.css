@@ -24,48 +24,39 @@ body {
   font-size: var(--text-body);
   line-height: var(--leading-body);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
-/* Jerarquía tipográfica explícita para que h1-h4 se vean igual sin importar
-   en qué página/componente aparezcan — antes heredaban el tamaño por
-   defecto del navegador y cada página terminaba con un tamaño distinto. */
-h1,
-h2,
-h3,
-h4 {
+/* ── Scrollbar global ──────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-disabled); }
+
+/* ── Tipografía ──────────────────────────────────────────────────────────── */
+
+h1, h2, h3, h4 {
   margin: 0;
   line-height: var(--leading-title);
   font-weight: 600;
 }
+h1 { font-size: var(--text-title); }
+h2 { font-size: var(--text-subtitle); }
+h3 { font-size: var(--text-body-lg); }
+h4 { font-size: var(--text-body); }
 
-h1 {
-  font-size: var(--text-title);
-}
+p { margin: 0; }
 
-h2 {
-  font-size: var(--text-subtitle);
-}
-
-h3 {
-  font-size: var(--text-body-lg);
-}
-
-h4 {
-  font-size: var(--text-body);
-}
-
-p {
-  margin: 0;
-}
-
-button,
-input,
-select,
-textarea {
+button, input, select, textarea {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
@@ -76,14 +67,13 @@ a {
   text-decoration: none;
 }
 
-/* Datos alfanuméricos operativos: números de remisión, placas, facturas,
-   columnas numéricas/monetarias en tablas. */
+/* Datos alfanuméricos: números de remisión, placas, facturas, montos */
 .font-mono-data {
   font-family: var(--font-mono);
   font-feature-settings: "tnum" 1;
 }
 
-/* Foco de teclado visible y consistente en toda la app (Paso 15.2) */
+/* Foco de teclado visible y consistente */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

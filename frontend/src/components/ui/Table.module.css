@@ -9,8 +9,8 @@
   width: 100%;
   border-collapse: collapse;
   min-width: 480px;
-  border-left: 1px solid rgba(47, 95, 224, 0.22);
-  border-right: 1px solid rgba(47, 95, 224, 0.22);
+  border-left:  1px solid rgba(47, 95, 224, 0.18);
+  border-right: 1px solid rgba(47, 95, 224, 0.18);
 }
 
 /* Tablas dentro de paneles angostos (ej. Ubicaciones): sin ancho mínimo,
@@ -26,17 +26,18 @@
 
 .table thead th {
   text-align: left;
-  padding: 13px 16px;
-  font-size: 12.5px;
-  font-weight: 500;
+  padding: 11px 16px;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-secondary);
-  background: var(--bg-surface);
+  background: var(--bg-surface-2);
   border-top: 1px solid var(--border);
-  border-bottom: 1px solid #d9e0f2;
+  border-bottom: 1px solid #d5ddf0;
   white-space: nowrap;
   position: sticky;
   top: 0;
   z-index: 2;
+  letter-spacing: 0.02em;
 }
 
 .thOrdenable {
@@ -74,7 +75,7 @@
 }
 
 .table tbody td {
-  height: 62px;
+  height: 56px;
   padding: 0 16px;
   font-size: var(--text-body);
   color: var(--text-primary);
@@ -82,20 +83,12 @@
   white-space: nowrap;
 }
 
-.table tbody td.alignRight {
-  text-align: right;
-}
-
-.table tbody tr:last-child td {
-  border-bottom: none;
-}
-
 .table tbody tr {
-  transition: background-color 0.1s ease;
+  transition: background-color var(--transition-fast);
 }
 
 .table tbody tr:hover {
-  background: var(--bg-canvas);
+  background: var(--accent-tint);
 }
 
 /* Fila seleccionada (ej. casillas de facturación múltiple). */

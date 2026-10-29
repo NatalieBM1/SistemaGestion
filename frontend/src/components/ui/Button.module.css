@@ -46,12 +46,12 @@
 
 /* primary — más peso visual: sombra propia, se eleva en hover, se hunde en active */
 .primary {
-  background: var(--accent);
+  background: linear-gradient(180deg, #4a74e8 0%, var(--accent) 55%, var(--accent-hover) 100%);
   color: #fff;
   box-shadow: var(--shadow-btn);
 }
 .primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: linear-gradient(180deg, #5580ee 0%, var(--accent-hover) 55%, var(--accent-deep) 100%);
   box-shadow: var(--shadow-btn-hover);
   transform: translateY(-1px);
 }

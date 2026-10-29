@@ -1,0 +1,253 @@
+/* ── Dashboard ──────────────────────────────────────────────────────────── */
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.heroDate {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-disabled);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-1);
+}
+
+.heroTitle {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.heroSub {
+  margin: 6px 0 0;
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+}
+
+/* ── Grid de tarjetas ───────────────────────────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 18px;
+}
+
+/* ── Tarjeta individual ─────────────────────────────────────────────────── */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 22px 22px 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: box-shadow var(--transition-base), transform var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+}
+
+/* Franja superior de color por tono */
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--card-stripe, var(--accent));
+}
+
+.cardDefault  { --card-stripe: linear-gradient(90deg, var(--accent), var(--accent-soft)); }
+.cardWarning  { --card-stripe: linear-gradient(90deg, var(--warning), #f5c842); }
+.cardSuccess  { --card-stripe: linear-gradient(90deg, var(--success), #34c97c); }
+.cardMoney    { --card-stripe: linear-gradient(90deg, #6c3dd6, #a678f7); }
+
+/* Círculo icono */
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.iconDefault { background: var(--accent-tint);   color: var(--accent); }
+.iconWarning { background: var(--warning-bg);     color: var(--warning); }
+.iconSuccess { background: var(--success-bg);     color: var(--success); }
+.iconMoney   { background: #f0ebff;               color: #6c3dd6; }
+
+/* Contenido */
+.cardLabel {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.cardValue {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.cardMoney .cardValue { font-size: 22px; font-feature-settings: "tnum" 1; }
+
+.cardHint {
+  font-size: 12px;
+  color: var(--text-disabled);
+  margin-top: 2px;
+}
+
+/* Punto de alerta en la esquina superior derecha */
+.alertDot {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+  box-shadow: 0 0 0 3px var(--warning-bg);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--warning-bg); }
+  50%       { box-shadow: 0 0 0 5px rgba(168, 120, 0, 0.18); }
+}
+
+/* Barra de progreso (pendientes / total) */
+.progress {
+  margin-top: var(--space-2);
+}
+
+.progressTrack {
+  height: 4px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-soft));
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Sección "Acciones rápidas" ─────────────────────────────────────────── */
+
+.section {
+  margin-top: var(--space-7);
+}
+
+.sectionTitle {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-disabled);
+  margin-bottom: var(--space-4);
+}
+
+.quickGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.quickCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    box-shadow var(--transition-fast), transform var(--transition-fast);
+  text-align: left;
+  font: inherit;
+  color: var(--text-primary);
+}
+
+.quickCard:hover {
+  background: var(--accent-tint);
+  border-color: rgba(47, 95, 224, 0.35);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+  color: var(--accent-deep);
+}
+
+.quickCard:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.quickIcon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--accent-tint);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.quickCard:hover .quickIcon {
+  background: var(--accent);
+  color: #fff;
+}
+
+.quickLabel {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .heroTitle { font-size: 26px; }
+  .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .quickGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .grid { grid-template-columns: 1fr; }
+  .quickGrid { grid-template-columns: 1fr; }
+}

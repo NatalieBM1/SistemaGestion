@@ -1,5 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Building2, Car, FileWarning, Plus, Receipt, Truck } from "lucide-react";
+import {
+  AlertTriangle,
+  BarChart3,
+  Building2,
+  Car,
+  FileText,
+  FileWarning,
+  Plus,
+  Receipt,
+  Truck,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../api/client";
@@ -8,6 +18,7 @@ import { Button } from "../../components/ui";
 import { formatMoney } from "../../lib/format";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
+import styles from "./Dashboard.module.css";
 
 const FORMATO_FECHA = new Intl.DateTimeFormat("es-CO", {
   weekday: "long",
@@ -35,35 +46,60 @@ function hoyISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+type Tone = "default" | "warning" | "success" | "money";
+
 interface StatCardProps {
   icon: ReactNode;
   label: string;
   value: ReactNode;
-  tone?: "default" | "warning";
+  tone?: Tone;
   hint?: string;
+  showAlert?: boolean;
+  progressPct?: number;
 }
 
-function StatCard({ icon, label, value, tone = "default", hint }: StatCardProps) {
+const toneCard: Record<Tone, string>  = {
+  default: styles.cardDefault,
+  warning: styles.cardWarning,
+  success: styles.cardSuccess,
+  money:   styles.cardMoney,
+};
+const toneIcon: Record<Tone, string> = {
+  default: styles.iconDefault,
+  warning: styles.iconWarning,
+  success: styles.iconSuccess,
+  money:   styles.iconMoney,
+};
+
+function StatCard({ icon, label, value, tone = "default", hint, showAlert, progressPct }: StatCardProps) {
   return (
-    <div
-      style={{
-        background: "var(--bg-surface)",
-        border: `1px solid ${tone === "warning" ? "var(--warning)" : "var(--border)"}`,
-        borderRadius: "var(--radius-md)",
-        padding: "var(--space-4)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-2)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", color: tone === "warning" ? "var(--warning)" : "var(--accent)" }}>
-        {icon}
-        <span style={{ fontSize: "var(--text-caption)", color: "var(--text-secondary)", fontWeight: 500 }}>{label}</span>
+    <div className={`${styles.card} ${toneCard[tone]}`}>
+      {showAlert && <span className={styles.alertDot} aria-hidden="true" />}
+      <div className={`${styles.iconWrap} ${toneIcon[tone]}`}>{icon}</div>
+      <div>
+        <div className={styles.cardLabel}>{label}</div>
+        <div className={styles.cardValue}>{value}</div>
+        {hint && <div className={styles.cardHint}>{hint}</div>}
       </div>
-      <div style={{ fontSize: "var(--text-title)", fontWeight: 600, color: "var(--text-primary)" }}>{value}</div>
-      {hint && <div style={{ fontSize: "var(--text-caption)", color: "var(--text-secondary)" }}>{hint}</div>}
+      {progressPct !== undefined && (
+        <div className={styles.progress}>
+          <div className={styles.progressTrack}>
+            <div
+              className={styles.progressFill}
+              style={{ width: `${Math.min(progressPct, 100)}%` }}
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+interface QuickAction {
+  label: string;
+  icon: ReactNode;
+  path: string;
 }
 
 export function Dashboard() {
@@ -72,34 +108,36 @@ export function Dashboard() {
   const user = useAuthStore((state) => state.user);
 
   const desdeMes = primerDiaDelMes();
-  const hasta = hoyISO();
+  const hasta    = hoyISO();
 
   const { data: remisionesMes } = useQuery({
     queryKey: ["dashboard-remisiones-mes", desdeMes, hasta],
-    queryFn: () => listRemisiones({ page: 1, page_size: 1, desde: desdeMes, hasta }),
+    queryFn:  () => listRemisiones({ page: 1, page_size: 1, desde: desdeMes, hasta }),
   });
 
   const { data: noFacturadas } = useQuery({
     queryKey: ["dashboard-no-facturadas"],
-    queryFn: () => listRemisiones({ page: 1, page_size: 1, estado_facturacion: "NO_FACTURADA" }),
+    queryFn:  () => listRemisiones({ page: 1, page_size: 1, estado_facturacion: "NO_FACTURADA" }),
   });
 
   const { data: facturadaParcial } = useQuery({
     queryKey: ["dashboard-facturada-parcial"],
-    queryFn: () => listRemisiones({ page: 1, page_size: 1, estado_facturacion: "FACTURADA_PARCIAL" }),
+    queryFn:  () => listRemisiones({ page: 1, page_size: 1, estado_facturacion: "FACTURADA_PARCIAL" }),
   });
 
   const { data: resumenFacturado } = useQuery({
     queryKey: ["dashboard-resumen-facturado", desdeMes, hasta],
-    queryFn: async () => {
-      const { data } = await apiClient.get("/api/facturas/resumen", { params: { desde: desdeMes, hasta } });
+    queryFn:  async () => {
+      const { data } = await apiClient.get("/api/facturas/resumen", {
+        params: { desde: desdeMes, hasta },
+      });
       return data as { valor_total_facturado: string; cantidad_facturaciones: number };
     },
   });
 
   const { data: terceros } = useQuery({
     queryKey: ["dashboard-terceros"],
-    queryFn: async () => {
+    queryFn:  async () => {
       const { data } = await apiClient.get("/api/terceros", { params: { page_size: 1 } });
       return data as { total: number };
     },
@@ -107,65 +145,118 @@ export function Dashboard() {
 
   const { data: activos } = useQuery({
     queryKey: ["dashboard-activos"],
-    queryFn: async () => {
+    queryFn:  async () => {
       const { data } = await apiClient.get("/api/activos", { params: { page_size: 1 } });
       return data as { total: number };
     },
   });
 
+  // Porcentaje de remisiones pendientes de facturar respecto al mes
+  const totalMes    = remisionesMes?.total ?? 0;
+  const pendientes  = (noFacturadas?.total ?? 0) + (facturadaParcial?.total ?? 0);
+  const progPct     = totalMes > 0 ? ((totalMes - pendientes) / totalMes) * 100 : 0;
+
+  const quickActions: QuickAction[] = [
+    { label: "Nueva remisión",   icon: <Plus size={18} />,      path: "/remisiones/nueva" },
+    { label: "Ver remisiones",   icon: <Truck size={18} />,     path: "/remisiones" },
+    { label: "Facturación",      icon: <Receipt size={18} />,   path: "/facturas" },
+    { label: "Reportes",         icon: <BarChart3 size={18} />, path: "/reportes" },
+    { label: "Terceros",         icon: <Building2 size={18} />, path: "/terceros" },
+    { label: "Activos",          icon: <Car size={18} />,       path: "/activos" },
+  ];
+
   return (
     <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-          marginBottom: "var(--space-6)",
-          flexWrap: "wrap",
-          gap: "var(--space-4)",
-        }}
-      >
-        <div>
-          <p style={{ color: "var(--text-secondary)", margin: "0 0 var(--space-1)", fontSize: "var(--text-caption)" }}>
-            {fechaDeHoyLarga()}
-          </p>
-          <h1 style={{ margin: 0 }}>{primerNombre(user?.nombre) ? `Hola, ${primerNombre(user?.nombre)}` : "Inicio"}</h1>
-          <p style={{ color: "var(--text-secondary)", margin: "var(--space-1) 0 0" }}>
-            Este es el resumen del sistema, actualizado en tiempo real.
+      {/* Encabezado */}
+      <div className={styles.hero}>
+        <div className={styles.heroText}>
+          <p className={styles.heroDate}>{fechaDeHoyLarga()}</p>
+          <h1 className={styles.heroTitle}>
+            {primerNombre(user?.nombre) ? `Hola, ${primerNombre(user?.nombre)} 👋` : "Inicio"}
+          </h1>
+          <p className={styles.heroSub}>
+            Resumen del sistema · actualizado en tiempo real
           </p>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => navigate("/remisiones/nueva")}>
+        <Button
+          variant="primary"
+          leftIcon={<Plus size={16} />}
+          onClick={() => navigate("/remisiones/nueva")}
+        >
           Nueva remisión
         </Button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "var(--space-4)" }}>
+      {/* KPIs */}
+      <div className={styles.grid}>
         <StatCard
-          icon={<Truck size={18} strokeWidth={1.75} />}
+          icon={<Truck size={20} strokeWidth={1.75} />}
           label="Remisiones este mes"
           value={remisionesMes?.total ?? "—"}
+          hint={`Hasta el ${hasta.split("-").reverse().join("/")}`}
+          progressPct={progPct}
         />
         <StatCard
-          icon={<FileWarning size={18} strokeWidth={1.75} />}
-          label="No facturadas"
+          icon={<FileWarning size={20} strokeWidth={1.75} />}
+          label="Sin facturar"
           value={noFacturadas?.total ?? "—"}
           hint="Pendientes de iniciar facturación"
+          tone={(noFacturadas?.total ?? 0) > 0 ? "warning" : "default"}
+          showAlert={(noFacturadas?.total ?? 0) > 0}
         />
         <StatCard
-          icon={<AlertTriangle size={18} strokeWidth={1.75} />}
+          icon={<AlertTriangle size={20} strokeWidth={1.75} />}
           label="Facturadas parcialmente"
           value={facturadaParcial?.total ?? "—"}
-          tone={(facturadaParcial?.total ?? 0) > 0 ? "warning" : "default"}
           hint="Con saldo pendiente de cobro"
+          tone={(facturadaParcial?.total ?? 0) > 0 ? "warning" : "default"}
+          showAlert={(facturadaParcial?.total ?? 0) > 0}
         />
         <StatCard
-          icon={<Receipt size={18} strokeWidth={1.75} />}
+          icon={<Receipt size={20} strokeWidth={1.75} />}
           label="Facturado este mes"
-          value={resumenFacturado ? formatMoney(resumenFacturado.valor_total_facturado) : "—"}
-          hint={resumenFacturado ? `${resumenFacturado.cantidad_facturaciones} facturación(es) activa(s)` : undefined}
+          value={
+            resumenFacturado
+              ? formatMoney(resumenFacturado.valor_total_facturado)
+              : "—"
+          }
+          hint={
+            resumenFacturado
+              ? `${resumenFacturado.cantidad_facturaciones} facturación(es)`
+              : undefined
+          }
+          tone="money"
         />
-        <StatCard icon={<Building2 size={18} strokeWidth={1.75} />} label="Terceros registrados" value={terceros?.total ?? "—"} />
-        <StatCard icon={<Car size={18} strokeWidth={1.75} />} label="Activos registrados" value={activos?.total ?? "—"} />
+        <StatCard
+          icon={<Building2 size={20} strokeWidth={1.75} />}
+          label="Terceros registrados"
+          value={terceros?.total ?? "—"}
+          tone="success"
+        />
+        <StatCard
+          icon={<Car size={20} strokeWidth={1.75} />}
+          label="Activos registrados"
+          value={activos?.total ?? "—"}
+          tone="success"
+        />
+      </div>
+
+      {/* Acciones rápidas */}
+      <div className={styles.section}>
+        <p className={styles.sectionTitle}>Acciones rápidas</p>
+        <div className={styles.quickGrid}>
+          {quickActions.map((a) => (
+            <button
+              key={a.path}
+              type="button"
+              className={styles.quickCard}
+              onClick={() => navigate(a.path)}
+            >
+              <span className={styles.quickIcon}>{a.icon}</span>
+              <span className={styles.quickLabel}>{a.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

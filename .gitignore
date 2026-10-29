@@ -20,6 +20,7 @@ frontend/.vite/
 
 # ── Variables de entorno (nunca commitear secretos) ──────────────────────────
 .env
+.env.*
 frontend/.env
 *.env.local
 *.env.*.local

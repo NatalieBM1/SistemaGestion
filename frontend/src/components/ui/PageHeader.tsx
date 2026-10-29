@@ -22,10 +22,10 @@ export function PageHeader({ title, subtitle, breadcrumb, actions, children }: P
           {breadcrumb && breadcrumb.length > 0 && (
             <nav className={styles.crumb} aria-label="Ruta de navegación">
               {breadcrumb.map((item, index) => (
-                <span key={index}>
-                  {index > 0 && "  /  "}
+                <span key={index} style={{ display: "contents" }}>
+                  {index > 0 && <span className={styles.crumbSep} aria-hidden="true">/</span>}
                   {typeof item === "string" ? (
-                    item
+                    <span>{item}</span>
                   ) : (
                     <Link to={item.to} className={styles.crumbLink}>
                       {item.label}
