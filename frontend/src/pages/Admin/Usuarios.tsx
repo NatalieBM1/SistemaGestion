@@ -137,9 +137,8 @@ export function Usuarios() {
   const submitMutation = useMutation({
     mutationFn: async (values: UsuarioFormValues) => {
       const payload: Record<string, unknown> = {
-        nombre: values.nombre,
-        email: values.email,
-        // Opcional: vacío = sin dato (en los reportes la columna queda vacía).
+        nombre: values.nombre.trim().toUpperCase(),
+        email: values.email.trim().toLowerCase(),
         identificacion: values.identificacion.trim() || null,
         activo: values.activo,
       };
@@ -303,6 +302,7 @@ export function Usuarios() {
 
           <Input
             label="Nombre"
+            style={{ textTransform: "uppercase" }}
             error={errors.nombre?.message}
             {...register("nombre", { required: "El nombre es obligatorio." })}
           />

@@ -114,8 +114,15 @@ export function ListadoActivos() {
   };
 
   const submitMutation = useMutation({
-    mutationFn: (values: ActivoFormValues) =>
-      editingItem ? updateActivo(editingItem.id, { ...values }) : createActivo({ ...values }),
+    mutationFn: (values: ActivoFormValues) => {
+      const norm = {
+        ...values,
+        placa: values.placa.trim().toUpperCase(),
+        tipo_activo: values.tipo_activo.trim().toUpperCase(),
+        clase: values.clase.trim().toUpperCase(),
+      };
+      return editingItem ? updateActivo(editingItem.id, norm) : createActivo(norm);
+    },
     onSuccess: (activo) => {
       invalidate();
       setFormOpen(false);
@@ -296,20 +303,23 @@ export function ListadoActivos() {
               label="Placa"
               required
               monoData
+              style={{ textTransform: "uppercase" }}
               error={errors.placa?.message}
               {...register("placa", { required: "La placa es obligatoria." })}
             />
             <Input
               label="Tipo de activo"
               required
-              placeholder="Ej: Vehículo, Cama baja"
+              placeholder="Ej: VEHÍCULO, CAMA BAJA"
+              style={{ textTransform: "uppercase" }}
               error={errors.tipo_activo?.message}
               {...register("tipo_activo", { required: "El tipo de activo es obligatorio." })}
             />
             <Input
               label="Clase"
               required
-              placeholder="Ej: Tractocamión, Volqueta"
+              placeholder="Ej: TRACTOCAMIÓN, VOLQUETA"
+              style={{ textTransform: "uppercase" }}
               error={errors.clase?.message}
               {...register("clase", { required: "La clase es obligatoria." })}
             />

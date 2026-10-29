@@ -360,8 +360,13 @@ function CatalogoForm({ config, initialValues, error, onSubmit }: CatalogoFormPr
       const raw = values[field.name];
       if (field.type === "number") {
         payload[field.name] = raw === "" || raw === undefined ? undefined : Number(raw);
-      } else if (field.type === "text" && raw === "") {
-        payload[field.name] = undefined;
+      } else if (field.type === "text") {
+        if (raw === "" || raw === undefined) {
+          payload[field.name] = undefined;
+        } else {
+          // Los campos de texto de catálogos se guardan en mayúsculas
+          payload[field.name] = String(raw).trim().toUpperCase();
+        }
       } else {
         payload[field.name] = raw;
       }
@@ -386,6 +391,7 @@ function CatalogoForm({ config, initialValues, error, onSubmit }: CatalogoFormPr
               type={field.type === "number" ? "number" : "text"}
               monoData={field.monoData}
               error={errors[field.name]?.message as string | undefined}
+              style={field.type === "text" ? { textTransform: "uppercase" } : undefined}
               {...register(field.name, {
                 required: field.required ? `${field.label} es obligatorio.` : false,
               })}

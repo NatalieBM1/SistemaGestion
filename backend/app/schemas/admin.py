@@ -7,8 +7,6 @@ _IDENTIFICACION = re.compile(r"^[0-9A-Za-z.\-]{1,30}$")
 
 
 def _limpiar_identificacion(valor: str | None) -> str | None:
-    """Opcional: vacío = sin dato. Cédula/NIT tal cual (texto, conserva
-    ceros a la izquierda): dígitos, letras, punto o guion, hasta 30."""
     if valor is None:
         return None
     valor = valor.strip()
@@ -29,6 +27,16 @@ class UsuarioCreate(BaseModel):
     activo: bool = True
     identificacion: str | None = None
 
+    @field_validator("nombre", mode="before")
+    @classmethod
+    def norm_nombre(cls, v: str) -> str:
+        return v.strip().upper()
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def norm_email(cls, v: str) -> str:
+        return v.strip().lower()
+
     _validar_identificacion = field_validator("identificacion")(_limpiar_identificacion)
 
 
@@ -38,6 +46,20 @@ class UsuarioUpdate(BaseModel):
     password: str | None = None
     activo: bool | None = None
     identificacion: str | None = None
+
+    @field_validator("nombre", mode="before")
+    @classmethod
+    def norm_nombre(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return v.strip().upper()
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def norm_email(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return v.strip().lower()
 
     _validar_identificacion = field_validator("identificacion")(_limpiar_identificacion)
 

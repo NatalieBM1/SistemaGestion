@@ -152,7 +152,6 @@ def obtener_tercero(tercero_id: int, session: Session = Depends(get_session)):
 def crear_tercero(payload: TerceroCreate, session: Session = Depends(get_session)):
     _verificar_identificacion_unica(session, payload.identificacion)
     datos = payload.model_dump()
-    datos["nombre"] = datos["nombre"].upper()
     tercero = Tercero(**datos)
     session.add(tercero)
     commit_or_409(session)
@@ -173,8 +172,6 @@ def actualizar_tercero(
     _verificar_identificacion_unica(
         session, datos.get("identificacion"), excluir_id=tercero_id
     )
-    if "nombre" in datos and datos["nombre"] is not None:
-        datos["nombre"] = datos["nombre"].upper()
     for campo, valor in datos.items():
         setattr(tercero, campo, valor)
     session.add(tercero)

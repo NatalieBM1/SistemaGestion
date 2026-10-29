@@ -112,8 +112,13 @@ export function ListadoUbicaciones() {
   };
 
   const deptoMutation = useMutation({
-    mutationFn: (values: DepartamentoFormValues) =>
-      editingDepto ? updateDepartamento(editingDepto.id, { ...values }) : createDepartamento({ ...values }),
+    mutationFn: (values: DepartamentoFormValues) => {
+      const norm = {
+        codigo_dane: values.codigo_dane.trim().toUpperCase(),
+        nombre: values.nombre.trim().toUpperCase(),
+      };
+      return editingDepto ? updateDepartamento(editingDepto.id, norm) : createDepartamento(norm);
+    },
     onSuccess: (depto) => {
       queryClient.invalidateQueries({ queryKey: ["departamentos"] });
       setDeptoFormOpen(false);
@@ -141,10 +146,15 @@ export function ListadoUbicaciones() {
   };
 
   const municipioMutation = useMutation({
-    mutationFn: (values: MunicipioFormValues) =>
-      editingMunicipio
-        ? updateMunicipio(editingMunicipio.id, { ...values })
-        : createMunicipio({ ...values, departamento_id: selectedDepto!.id }),
+    mutationFn: (values: MunicipioFormValues) => {
+      const norm = {
+        codigo_dane: values.codigo_dane.trim().toUpperCase(),
+        nombre: values.nombre.trim().toUpperCase(),
+      };
+      return editingMunicipio
+        ? updateMunicipio(editingMunicipio.id, norm)
+        : createMunicipio({ ...norm, departamento_id: selectedDepto!.id });
+    },
     onSuccess: (municipio) => {
       queryClient.invalidateQueries({ queryKey: ["municipios-de-departamento"] });
       setMunicipioFormOpen(false);
@@ -446,6 +456,7 @@ export function ListadoUbicaciones() {
             <Input
               label="Nombre"
               required
+              style={{ textTransform: "uppercase" }}
               error={deptoForm.formState.errors.nombre?.message}
               {...deptoForm.register("nombre", { required: "El nombre es obligatorio." })}
             />
@@ -486,6 +497,7 @@ export function ListadoUbicaciones() {
             <Input
               label="Nombre"
               required
+              style={{ textTransform: "uppercase" }}
               error={municipioForm.formState.errors.nombre?.message}
               {...municipioForm.register("nombre", { required: "El nombre es obligatorio." })}
             />
