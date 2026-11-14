@@ -2,7 +2,7 @@
 intentos), "olvidé mi contraseña" sin enumeración y token_version.
 Usa la base SQLite de prueba de conftest.py."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session, select
 
@@ -63,7 +63,7 @@ def test_codigo_vencido_no_sirve(client_api, correos, engine_prueba):
     codigo = _pedir_codigo(client_api, correos)
     with Session(engine_prueba) as s:
         u = s.exec(select(Usuario).where(Usuario.email == EMAIL)).one()
-        u.reset_token_expires = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=1)
+        u.reset_token_expires = datetime.now(UTC).replace(tzinfo=None) - timedelta(seconds=1)
         s.add(u)
         s.commit()
     assert _reset(client_api, codigo).status_code == 400
@@ -113,7 +113,9 @@ def test_olvide_mi_contrasena_responde_igual_exista_o_no(client_api, correos):
     assert existe.status_code == no_existe.status_code == 200
     assert existe.content == no_existe.content
     ignorar = {"date"}
-    cab = lambda r: {k: v for k, v in r.headers.items() if k.lower() not in ignorar}
+    def cab(r):
+        return {k: v for k, v in r.headers.items() if k.lower() not in ignorar}
+
     assert cab(existe) == cab(no_existe)
     # Solo se envió correo al que existe.
     assert [c["email"] for c in correos] == [EMAIL]
@@ -138,7 +140,7 @@ def test_fallo_smtp_no_rompe_la_respuesta(client_api, monkeypatch, caplog):
     monkeypatch.setattr(email_service, "enviar_codigo_recuperacion", _falla)
     resp = client_api.post("/api/auth/forgot-password", json={"email": EMAIL})
     assert resp.status_code == 200
-    assert "No se pudo enviar el código" in caplog.text
+    assert "No se pudo enviar el código de recuperación (usuario id=" in caplog.text
 
 
 # ── token_version ────────────────────────────────────────────────────────────

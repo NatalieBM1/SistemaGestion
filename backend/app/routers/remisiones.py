@@ -1,5 +1,6 @@
 import re
 from datetime import date
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import Integer, case, cast
@@ -54,7 +55,7 @@ def _patrones_busqueda_numero(texto: str) -> list[str]:
         # automática, ej. "GTS-006520")...
         variantes.add(f"{prefijo}-{digitos.zfill(6)}")
         # ...y sin ellos (formato del histórico importado, ej. "GTS-6520").
-        variantes.add(f"{prefijo}-{str(int(digitos))}")
+        variantes.add(f"{prefijo}-{int(digitos)!s}")
     return [f"%{v}%" for v in variantes]
 
 
@@ -288,6 +289,7 @@ def actualizar_remision(
     svc.validar_remision_editable(remision)
 
     datos = payload.model_dump(exclude_unset=True)
+    limpiar_valor_camabaja = datos.pop("limpiar_valor_camabaja", False)
 
     advertencia = None
     if "orden_servicio_id" in datos and datos["orden_servicio_id"] != remision.orden_servicio_id:
@@ -302,6 +304,23 @@ def actualizar_remision(
     nuevo_camabaja_id = datos.get("camabaja_id", remision.camabaja_id)
     svc.validar_camabaja(session, nuevo_tipo_servicio_id, nuevo_camabaja_id)
 
+    # Se quita la cama baja: sus valores en los productos dejan de aplicar.
+    valores_camabaja_limpiados = 0
+    if remision.camabaja_id is not None and nuevo_camabaja_id is None:
+        con_valor = svc.productos_con_valor_camabaja(session, remision)
+        if con_valor and not limpiar_valor_camabaja:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"{len(con_valor)} producto(s) de esta remisión tienen valor de cama baja. "
+                    "Confirma que quieres quitar la cama baja y dejar ese valor en 0."
+                ),
+            )
+        for producto in con_valor:
+            producto.valor_camabaja = Decimal(0)
+            session.add(producto)
+        valores_camabaja_limpiados = len(con_valor)
+
     detalle_cambios = {
         campo: {
             "anterior": svc.valor_serializable(getattr(remision, campo)),
@@ -310,6 +329,11 @@ def actualizar_remision(
         for campo, valor in datos.items()
         if getattr(remision, campo) != valor
     }
+    if valores_camabaja_limpiados:
+        detalle_cambios["valor_camabaja_productos"] = {
+            "anterior": f"{valores_camabaja_limpiados} producto(s) con valor",
+            "nuevo": "0",
+        }
 
     for campo, valor in datos.items():
         setattr(remision, campo, valor)

@@ -1,4 +1,5 @@
-import { useState, type ReactNode, type UIEvent } from "react";
+import { useState, type MouseEvent, type ReactNode, type UIEvent } from "react";
+import { haySeleccionDeTexto } from "../../lib/portapapeles";
 import type { Ordenamiento } from "../../hooks/useOrdenamiento";
 import { ThOrdenable } from "./ThOrdenable";
 import styles from "./Table.module.css";
@@ -49,8 +50,24 @@ export function Table<T>({
     setScrolled(event.currentTarget.scrollLeft > 0);
   };
 
+  // Si el clic sobre un enlace/botón de una celda termina una selección de
+  // texto en esa misma celda, no se navega: el usuario quería copiar.
+  const evitarNavegarAlSeleccionar = (event: MouseEvent<HTMLDivElement>) => {
+    const objetivo = event.target as HTMLElement;
+    const celda = objetivo.closest("td");
+    if (celda && objetivo.closest("a, [role=button]") && haySeleccionDeTexto(celda)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
   return (
-    <div className={styles.wrapper} data-scrolled={scrolled} onScroll={handleScroll}>
+    <div
+      className={styles.wrapper}
+      data-scrolled={scrolled}
+      onScroll={handleScroll}
+      onClickCapture={evitarNavegarAlSeleccionar}
+    >
       {isLoading && <span className={styles.srOnly} role="status">Cargando…</span>}
       <table className={compacta ? `${styles.table} ${styles.tableCompacta}` : styles.table}>
         <thead>
@@ -99,7 +116,7 @@ export function Table<T>({
                       key={column.key}
                       className={[
                         column.align === "right" ? styles.alignRight : "",
-                        column.monoData ? "font-mono-data" : "",
+                        column.monoData ? "cifras" : "",
                         index === 0 ? styles.stickyCol : "",
                         column.truncate ? styles.truncateCell : "",
                       ]

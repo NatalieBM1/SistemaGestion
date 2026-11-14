@@ -9,10 +9,10 @@ uno naive con uno aware lanza TypeError.
 base: python-jose lo convierte a segundos epoch.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def ahora_utc() -> datetime:
     """Reemplazo de ``datetime.utcnow()`` (obsoleto desde Python 3.12),
     con el mismo resultado: hora UTC actual, sin tzinfo."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)

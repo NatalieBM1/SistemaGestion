@@ -5,6 +5,7 @@ import logo from "../assets/Logo_Transportes.png";
 import { hasPermission } from "../lib/permissions";
 import { usePageTitleStore } from "../store/pageTitleStore";
 import { useAuthStore } from "../store/authStore";
+import { PieDerechos } from "../components/ui/PieDerechos";
 import styles from "./MainLayout.module.css";
 
 interface NavItem {
@@ -139,6 +140,7 @@ export function MainLayout() {
             )}
             <Outlet />
           </div>
+          <PieDerechos className={styles.pie} />
         </main>
       </div>
     </div>

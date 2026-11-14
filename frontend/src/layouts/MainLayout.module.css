@@ -333,3 +333,15 @@
 
   .content { padding: 22px 18px 32px; }
 }
+
+/* Footer de derechos al final del contenido. */
+.pie {
+  margin-top: var(--space-6);
+  padding-bottom: 0;
+}
+
+/* Con la barra flotante de selección visible (Remisiones), espacio extra al
+   final para que no tape el footer de derechos ni las últimas filas. */
+.content:has([data-barra-flotante]) {
+  padding-bottom: 120px;
+}

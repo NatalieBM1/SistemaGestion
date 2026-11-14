@@ -26,7 +26,7 @@ import {
   type TableColumn,
 } from "../../components/ui";
 import { ordenarEnCliente, useOrdenamiento } from "../../hooks/useOrdenamiento";
-import { formatMoney } from "../../lib/format";
+import { formatCOP } from "../../lib/format";
 import { formatNumeroRemision } from "../../lib/formatNumeroRemision";
 import { usePageTitle } from "../../store/pageTitleStore";
 import tableStyles from "../../components/ui/Table.module.css";
@@ -37,7 +37,7 @@ function PendienteCell({ remisionId }: { remisionId: number }) {
     queryFn: () => getResumenFacturacion(remisionId),
   });
   if (isLoading || !data) return <span style={{ color: "var(--text-disabled)" }}>…</span>;
-  return <span className="font-mono-data">{formatMoney(data.saldo_pendiente)}</span>;
+  return <span className="cifras">{formatCOP(data.saldo_pendiente)}</span>;
 }
 
 export function DetalleFactura() {
@@ -145,7 +145,7 @@ export function DetalleFactura() {
       header: "Remisión",
       sortField: "numero_remision",
       render: (r) => (
-        <Link to={`/remisiones/${r.remision_id}`} style={{ color: "var(--accent)", fontWeight: 500 }} className="font-mono-data">
+        <Link to={`/remisiones/${r.remision_id}`} style={{ color: "var(--accent)", fontWeight: 500 }} className="cifras">
           {formatNumeroRemision(r.numero_remision) || r.remision_id}
         </Link>
       ),
@@ -156,7 +156,7 @@ export function DetalleFactura() {
       header: "Valor facturado",
       sortField: "valor",
       monoData: true,
-      render: (r) => formatMoney(r.valor_facturado),
+      render: (r) => formatCOP(r.valor_facturado),
     },
     {
       key: "estado",
@@ -268,7 +268,7 @@ export function DetalleFactura() {
         </div>
         <div>
           <div style={{ fontSize: "var(--text-caption)", color: "var(--text-secondary)" }}>Valor facturado</div>
-          <div style={{ fontWeight: 500 }}>{formatMoney(valorTotal)}</div>
+          <div style={{ fontWeight: 500 }}>{formatCOP(valorTotal)}</div>
         </div>
       </div>
 
@@ -414,9 +414,9 @@ export function DetalleFactura() {
                         onChange={() => toggleCandidata(r.id)}
                       />
                     </td>
-                    <td className="font-mono-data">{formatNumeroRemision(r.numero_remision)}</td>
+                    <td className="cifras">{formatNumeroRemision(r.numero_remision)}</td>
                     <td>{r.fecha}</td>
-                    <td className="font-mono-data">{r.vehiculo_placa ?? "—"}</td>
+                    <td className="cifras">{r.vehiculo_placa ?? "—"}</td>
                     <td>{r.estado_facturacion}</td>
                     <td style={{ textAlign: "right" }}>
                       <PendienteCell remisionId={r.id} />

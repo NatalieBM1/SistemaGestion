@@ -4,7 +4,7 @@ Las pruebas sobre Postgres corren dentro de una transacción que se revierte
 al final: no queda nada escrito en el clon (TEST_DATABASE_URL)."""
 
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -28,7 +28,7 @@ def _cerca_de_ahora(valor: datetime) -> bool:
 def test_ahora_utc_es_utc_sin_zona():
     valor = ahora_utc()
     assert valor.tzinfo is None
-    utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    utc = datetime.now(UTC).replace(tzinfo=None)
     assert abs(utc - valor) < timedelta(seconds=2)
 
 
@@ -73,7 +73,7 @@ def test_token_vencido_se_rechaza(client_api, engine_prueba):
 
 def test_exp_del_token_es_la_hora_utc_correcta():
     token = create_access_token({"sub": "1"}, expires_delta=timedelta(minutes=60))
-    exp = datetime.fromtimestamp(decode_token(token)["exp"], tz=timezone.utc).replace(tzinfo=None)
+    exp = datetime.fromtimestamp(decode_token(token)["exp"], tz=UTC).replace(tzinfo=None)
     assert abs(exp - (ahora_utc() + timedelta(minutes=60))) < timedelta(seconds=5)
 
 

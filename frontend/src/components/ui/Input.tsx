@@ -40,7 +40,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               error ? styles.inputError : "",
               rightElement ? styles.hasRightElement : "",
               leftElement ? styles.hasLeftElement : "",
-              monoData ? "font-mono-data" : "",
+              monoData ? "cifras" : "",
               className,
             ]
               .filter(Boolean)

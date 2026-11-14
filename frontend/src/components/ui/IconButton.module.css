@@ -12,6 +12,13 @@
   transition: background-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
+/* Variante chica, p. ej. el botón de copiar junto a un dato. */
+.pequeno {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
 .button:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--accent-ring);

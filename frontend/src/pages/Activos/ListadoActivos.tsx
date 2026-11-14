@@ -374,7 +374,7 @@ export function ListadoActivos() {
       >
         <p className={styles.confirmText}>
           ¿Seguro que quieres {bloqueoTarget?.bloqueado ? "desbloquear" : "bloquear"} el activo{" "}
-          <strong className="font-mono-data">{bloqueoTarget?.placa}</strong>?
+          <strong className="cifras">{bloqueoTarget?.placa}</strong>?
         </p>
       </Modal>
     </PageHeader>

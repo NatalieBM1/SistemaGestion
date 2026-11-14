@@ -65,7 +65,9 @@ def agregar_producto_a_remision(
     remision = _obtener_remision_o_404(session, remision_id)
     svc.validar_remision_editable(remision)
 
-    producto = RemisionProducto(remision_id=remision_id, **payload.model_dump())
+    datos = payload.model_dump()
+    datos["valor_camabaja"] = svc.validar_valor_camabaja(remision, datos["valor_camabaja"])
+    producto = RemisionProducto(remision_id=remision_id, **datos)
     session.add(producto)
 
     alerta = None
@@ -97,6 +99,8 @@ def actualizar_producto_de_remision(
     producto = _obtener_producto_o_404(session, remision_id, producto_id)
 
     datos = payload.model_dump(exclude_unset=True)
+    if "valor_camabaja" in datos:
+        datos["valor_camabaja"] = svc.validar_valor_camabaja(remision, datos["valor_camabaja"])
     valor_flete_anterior = producto.valor_flete
 
     for campo, valor in datos.items():

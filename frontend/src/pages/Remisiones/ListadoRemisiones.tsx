@@ -40,7 +40,7 @@ const ESTADO_COLOR: Record<string, "neutral" | "warning" | "success"> = {
   FACTURADA_PARCIAL: "warning",
   FACTURADA: "success",
 };
-import { formatMoney } from "../../lib/format";
+import { formatCOP } from "../../lib/format";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "../../components/CatalogoCRUD.module.css";
 import tableStyles from "../../components/ui/Table.module.css";
@@ -290,7 +290,7 @@ export function ListadoRemisiones() {
       ),
     },
     { key: "placa", header: "Placa", monoData: true, sortField: "placa", render: (r) => r.vehiculo_placa ?? "—" },
-    { key: "valor_total", sortField: "valor_total", header: "Valor total", align: "right", render: (r) => formatMoney(r.valor_total) },
+    { key: "valor_total", sortField: "valor_total", header: "Valor total", align: "right", render: (r) => formatCOP(r.valor_total) },
     {
       key: "acciones",
       header: "Acciones",
@@ -624,7 +624,7 @@ export function ListadoRemisiones() {
               Cliente: <strong>{resumenSeleccion.cliente_nombre}</strong>
               <br />
               {resumenSeleccion.cantidad_remisiones} remisión(es) · Valor total:{" "}
-              <strong>{formatMoney(resumenSeleccion.valor_total)}</strong>
+              <strong>{formatCOP(resumenSeleccion.valor_total)}</strong>
             </p>
             <div style={{ display: "grid", gap: "var(--space-3)", marginTop: "var(--space-4)" }}>
               <Input
@@ -683,7 +683,9 @@ export function ListadoRemisiones() {
       </Modal>
 
       {seleccionadas.size > 0 && (
-        <div className={listStyles.barraFlotante}>
+        // data-barra-flotante: el layout agrega espacio al final mientras
+        // está visible, para que no tape el footer ni las últimas filas.
+        <div className={listStyles.barraFlotante} data-barra-flotante>
           <span>
             <strong>{seleccionadas.size}</strong> remisión(es) seleccionada(s)
             {clienteSeleccionado && <> · {clienteSeleccionado.nombre ?? "—"}</>}

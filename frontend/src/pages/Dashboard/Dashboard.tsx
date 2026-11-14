@@ -14,7 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../api/client";
 import { listRemisiones } from "../../api/remisiones";
 import { Button } from "../../components/ui";
-import { formatMoney } from "../../lib/format";
+import { formatCantidad, formatCOP } from "../../lib/format";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "./Dashboard.module.css";
@@ -171,7 +171,7 @@ export function Dashboard() {
         <div className={styles.heroText}>
           <p className={styles.heroDate}>{fechaDeHoyLarga()}</p>
           <h1 className={styles.heroTitle}>
-            {primerNombre(user?.nombre) ? `Hola, ${primerNombre(user?.nombre)} 👋` : "Inicio"}
+            {primerNombre(user?.nombre) ? `Hola, ${primerNombre(user?.nombre)}` : "Inicio"}
           </h1>
           <p className={styles.heroSub}>
             Resumen del sistema · actualizado en tiempo real
@@ -191,14 +191,14 @@ export function Dashboard() {
         <StatCard
           icon={<Truck size={20} strokeWidth={1.75} />}
           label="Remisiones este mes"
-          value={remisionesMes?.total ?? "—"}
+          value={remisionesMes ? formatCantidad(remisionesMes.total) : "—"}
           hint={`Hasta el ${hasta.split("-").reverse().join("/")}`}
           progressPct={progPct}
         />
         <StatCard
           icon={<FileWarning size={20} strokeWidth={1.75} />}
           label="Sin facturar"
-          value={noFacturadas?.total ?? "—"}
+          value={noFacturadas ? formatCantidad(noFacturadas.total) : "—"}
           hint="Pendientes de iniciar facturación"
           tone={(noFacturadas?.total ?? 0) > 0 ? "warning" : "default"}
           showAlert={(noFacturadas?.total ?? 0) > 0}
@@ -206,7 +206,7 @@ export function Dashboard() {
         <StatCard
           icon={<AlertTriangle size={20} strokeWidth={1.75} />}
           label="Facturadas parcialmente"
-          value={facturadaParcial?.total ?? "—"}
+          value={facturadaParcial ? formatCantidad(facturadaParcial.total) : "—"}
           hint="Con saldo pendiente de cobro"
           tone={(facturadaParcial?.total ?? 0) > 0 ? "warning" : "default"}
           showAlert={(facturadaParcial?.total ?? 0) > 0}
@@ -216,7 +216,7 @@ export function Dashboard() {
           label="Facturado este mes"
           value={
             resumenFacturado
-              ? formatMoney(resumenFacturado.valor_total_facturado)
+              ? formatCOP(resumenFacturado.valor_total_facturado)
               : "—"
           }
           hint={
@@ -229,13 +229,13 @@ export function Dashboard() {
         <StatCard
           icon={<Building2 size={20} strokeWidth={1.75} />}
           label="Terceros registrados"
-          value={terceros?.total ?? "—"}
+          value={terceros ? formatCantidad(terceros.total) : "—"}
           tone="success"
         />
         <StatCard
           icon={<Car size={20} strokeWidth={1.75} />}
           label="Activos registrados"
-          value={activos?.total ?? "—"}
+          value={activos ? formatCantidad(activos.total) : "—"}
           tone="success"
         />
       </div>

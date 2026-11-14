@@ -47,7 +47,6 @@ import csv
 import re
 import sys
 import unicodedata
-from datetime import date as date_type
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
@@ -59,8 +58,17 @@ from sqlmodel import Session, select
 if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8")
 
+from app.core import numero_remision as numero_remision_svc
 from app.models.activo import Activo
-from app.models.catalogos import FormaPago, Prefijo, Producto, Proyecto, Tramo, TipoServicio, UnidadMedida
+from app.models.catalogos import (
+    FormaPago,
+    Prefijo,
+    Producto,
+    Proyecto,
+    TipoServicio,
+    Tramo,
+    UnidadMedida,
+)
 from app.models.facturacion import Factura, RemisionFacturacion
 from app.models.remision import Remision, RemisionProducto
 from app.models.tercero import Tercero
@@ -169,7 +177,7 @@ def leer_hoja_registros(ruta: Path | None = None, hoja: str = "Registros") -> pd
     histórica normal se usan los valores por defecto."""
     df = pd.read_excel(ruta or RUTA_EXCEL, sheet_name=hoja)
     df.columns = [str(c).strip() for c in df.columns]
-    df["_prefijo"], df["_consec"] = zip(*df["Numero de remision"].map(_split_prefijo))
+    df["_prefijo"], df["_consec"] = zip(*df["Numero de remision"].map(_split_prefijo), strict=True)
     return df
 
 
@@ -385,8 +393,9 @@ def importar_remisiones(
             savepoint = session.begin_nested()
             try:
                 primera = filas_grupo.iloc[0]
+                # "GTS-6528" y "GTS-006528" son la misma remisión: no se duplica.
                 remision_existente = session.exec(
-                    select(Remision).where(Remision.numero_remision == numero)
+                    select(Remision).where(numero_remision_svc.condicion_mismo_numero(numero))
                 ).first()
 
                 if remision_existente is not None:
@@ -599,7 +608,7 @@ def importar_remisiones(
                     omitidas_ya_existian += 1
                 else:
                     creadas += 1
-            except Exception as exc:  # noqa: BLE001 — una remision mala no debe tumbar el lote
+            except Exception as exc:
                 savepoint.rollback()
                 omitidas_por_error += 1
                 motivo = exc.motivo if isinstance(exc, ErrorFila) else f"{type(exc).__name__}: {exc}"

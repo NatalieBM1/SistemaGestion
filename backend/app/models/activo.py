@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
@@ -9,14 +8,14 @@ from app.core.fechas import ahora_utc
 class EmpresaGrupo(SQLModel, table=True):
     __tablename__ = "empresas_grupo"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     nombre: str = Field(unique=True)
 
 
 class Activo(SQLModel, table=True):
     __tablename__ = "activos"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     placa: str = Field(unique=True)
     tipo_activo: str
     clase: str

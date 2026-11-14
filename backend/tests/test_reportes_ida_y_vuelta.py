@@ -18,6 +18,7 @@ import pytest
 from sqlalchemy import text
 from sqlmodel import Session, select
 
+from app.core import numero_remision as numero_remision_svc
 from app.models.remision import Remision, RemisionProducto
 from app.scripts import importar_registros as imp
 from app.services import reportes_service as svc
@@ -30,7 +31,7 @@ CAMPOS_REMISION = [
     "fecha", "forma_pago_id", "cliente_id", "conductor_id", "origen_municipio_id",
     "destino_municipio_id", "proyecto_id", "tramo_id", "tipo_servicio_id", "vehiculo_id",
     "camabaja_id", "kilometros", "hora_salida", "hora_llegada", "remision_agresur",
-    "estado_facturacion", "prefijo_id", "consecutivo",
+    "estado_facturacion", "prefijo_id",
 ]
 CAMPOS_LINEA = [
     "producto_id", "cantidad", "unidad_medida_id", "valor_material", "valor_flete",
@@ -50,8 +51,13 @@ def _foto(session):
         lineas = session.exec(
             select(RemisionProducto).where(RemisionProducto.remision_id == r.id).order_by(RemisionProducto.id)
         ).all()
-        foto[r.numero_remision] = {
-            "campos": {c: _normalizar(getattr(r, c)) for c in CAMPOS_REMISION},
+        # Clave = prefijo + consecutivo numérico: el reporte trae "GTS-006520"
+        # y lo guardado puede ser "GTS-6520"; es la misma remisión (Bloque 5).
+        foto[numero_remision_svc.clave(r.numero_remision) or r.numero_remision] = {
+            "campos": {
+                **{c: _normalizar(getattr(r, c)) for c in CAMPOS_REMISION},
+                "consecutivo": int(r.consecutivo) if r.consecutivo.isdigit() else r.consecutivo,
+            },
             "observaciones": r.observaciones,
             "lineas": [tuple(_normalizar(getattr(p, c)) for c in CAMPOS_LINEA) for p in lineas],
         }
@@ -126,7 +132,7 @@ def test_campos_de_remision_coinciden(ida_y_vuelta):
     antes, despues = ida_y_vuelta["antes"], ida_y_vuelta["despues"]
     distintas = {
         numero: {c: (antes[numero]["campos"][c], despues[numero]["campos"][c])
-                 for c in CAMPOS_REMISION if antes[numero]["campos"][c] != despues[numero]["campos"][c]}
+                 for c in antes[numero]["campos"] if antes[numero]["campos"][c] != despues[numero]["campos"][c]}
         for numero in antes
     }
     distintas = {n: d for n, d in distintas.items() if d}

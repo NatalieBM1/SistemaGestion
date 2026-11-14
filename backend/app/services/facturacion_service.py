@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
+from app.core import numero_remision as numero_remision_svc
 from app.core.errors import flush_or_409
 from app.core.fechas import ahora_utc
 from app.models.auditoria import Auditoria
@@ -145,7 +146,7 @@ def facturar_remision(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"La remisión {remision.numero_remision} ya está FACTURADA en su "
+                f"La remisión {numero_remision_svc.para_mostrar(remision.numero_remision)} ya está FACTURADA en su "
                 "totalidad; no se puede facturar de más."
             ),
         )
@@ -155,7 +156,7 @@ def facturar_remision(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"La remisión {remision.numero_remision} no tiene productos "
+                f"La remisión {numero_remision_svc.para_mostrar(remision.numero_remision)} no tiene productos "
                 "(valor_total_remision = 0); no hay nada que facturar."
             ),
         )
@@ -174,7 +175,7 @@ def facturar_remision(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
-                    f"La remisión {remision.numero_remision} ya tiene una "
+                    f"La remisión {numero_remision_svc.para_mostrar(remision.numero_remision)} ya tiene una "
                     "facturación TOTAL activa; no puede duplicarse."
                 ),
             )
@@ -196,7 +197,7 @@ def facturar_remision(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
                     f"El valor_facturado ({valor_a_facturar}) supera el saldo "
-                    f"pendiente de la remisión {remision.numero_remision} "
+                    f"pendiente de la remisión {numero_remision_svc.para_mostrar(remision.numero_remision)} "
                     f"({saldo_pendiente})."
                 ),
             )

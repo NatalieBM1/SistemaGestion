@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
+from app.core.config import settings
 from app.core.database import get_session
 from app.core.deps import get_current_active_user
 from app.core.fechas import ahora_utc
@@ -40,7 +41,6 @@ from app.schemas.auth import (
     UsuarioMe,
 )
 from app.services import email_service
-from app.core.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -161,14 +161,18 @@ _RESET_DETAIL_GENERICO = (
 )
 
 
-def _enviar_codigo_en_segundo_plano(email: str, nombre: str, codigo: str) -> None:
+def _enviar_codigo_en_segundo_plano(usuario_id: int, email: str, nombre: str, codigo: str) -> None:
     """Corre después de enviar la respuesta (BackgroundTasks), así el
     tiempo de respuesta no delata si el correo existe y un SMTP lento no
-    bloquea la petición. Los fallos solo quedan en el log."""
+    bloquea la petición. Los fallos solo quedan en el log, sin datos
+    personales: id del usuario y tipo de error (sin el correo ni el
+    traceback, que puede traer la dirección dentro del mensaje SMTP)."""
     try:
         email_service.enviar_codigo_recuperacion(email=email, nombre=nombre, codigo=codigo)
-    except Exception:
-        logger.exception("No se pudo enviar el código de recuperación a %s", email)
+    except Exception as exc:
+        logger.error(
+            "No se pudo enviar el código de recuperación (usuario id=%s): %s", usuario_id, type(exc).__name__
+        )
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
@@ -211,7 +215,7 @@ def forgot_password(
         session.add(usuario)
         session.commit()
         background_tasks.add_task(
-            _enviar_codigo_en_segundo_plano, usuario.email, usuario.nombre, codigo
+            _enviar_codigo_en_segundo_plano, usuario.id, usuario.email, usuario.nombre, codigo
         )
 
     return {"detail": _RESET_DETAIL_GENERICO}

@@ -5,7 +5,7 @@ from sqlmodel import Session, SQLModel, func, select
 from app.core.database import get_session
 from app.core.deps import require_permission
 from app.core.errors import commit_or_409
-from app.core.ordenamiento import clausulas_orden
+from app.core.ordenamiento import clausulas_orden, orden_por_prioridad
 from app.schemas.common import PaginatedResponse
 
 
@@ -25,6 +25,7 @@ def build_simple_crud_router(
     update_permission: str | None = None,
     delete_permission: str | None = None,
     sortable_fields: list[str] | None = None,
+    orden_prioridad: list[str] | None = None,
 ) -> APIRouter:
     """`write_permission` sigue gobernando crear/editar/eliminar cuando no
     se dan permisos más específicos — así los catálogos que no necesitan
@@ -89,6 +90,12 @@ def build_simple_crud_router(
                 )
             statement = statement.order_by(
                 *clausulas_orden([getattr(model, ordenar_por)], sentido, model.id)
+            )
+        elif orden_prioridad:
+            # Orden por defecto (formularios, filtros, tabla del catálogo):
+            # primero los de la lista, luego el resto alfabético.
+            statement = statement.order_by(
+                *orden_por_prioridad(getattr(model, search_field or "nombre"), orden_prioridad), model.id
             )
         else:
             statement = statement.order_by(model.id)

@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { apiClient } from "../../api/client";
 import styles from "./AsyncSelect.module.css";
+import { BotonCopiar } from "./BotonCopiar";
 
 interface AsyncOption {
   id: number;
@@ -19,6 +20,13 @@ interface AsyncSelectProps {
   error?: string;
   required?: boolean;
   disabled?: boolean;
+  /** Solo lectura: muestra la opción elegida como texto seleccionable
+   * (se puede copiar), sin abrir la lista. Usar en vez de `disabled`
+   * cuando el dato solo se consulta. */
+  readOnly?: boolean;
+  /** Si se da, junto a la etiqueta aparece un botón para copiar este texto
+   * de la opción elegida (p. ej. "MUNICIPIO, DEPARTAMENTO"). */
+  copiar?: (item: Record<string, unknown>) => string;
   placeholder?: string;
   hint?: string;
   icon?: ReactNode;
@@ -39,6 +47,8 @@ export function AsyncSelect({
   error,
   required,
   disabled,
+  readOnly,
+  copiar,
   placeholder = "Buscar…",
   hint,
   icon,
@@ -96,7 +106,7 @@ export function AsyncSelect({
   const selectedLabel = selectedItem ? getLabel(selectedItem) : null;
 
   const openDropdown = () => {
-    if (disabled) return;
+    if (disabled || readOnly) return;
     setIsOpen(true);
     setSearch("");
   };
@@ -112,14 +122,17 @@ export function AsyncSelect({
   return (
     <div className={styles.field} ref={containerRef}>
       {label && (
-        <label className={styles.label} htmlFor={generatedId}>
-          {label}
-          {required && (
-            <span className={styles.required} aria-hidden="true">
-              *
-            </span>
-          )}
-        </label>
+        <div className={styles.labelRow}>
+          <label className={styles.label} htmlFor={generatedId}>
+            {label}
+            {required && (
+              <span className={styles.required} aria-hidden="true">
+                *
+              </span>
+            )}
+          </label>
+          {copiar && selectedItem && <BotonCopiar texto={copiar(selectedItem)} que={label.toLowerCase()} />}
+        </div>
       )}
       <div className={styles.control}>
         {icon && <span className={styles.leftIcon} aria-hidden="true">{icon}</span>}
@@ -135,6 +148,8 @@ export function AsyncSelect({
           placeholder={selectedLabel && !isOpen ? undefined : placeholder}
           value={displayValue}
           disabled={disabled}
+          readOnly={readOnly}
+          aria-readonly={readOnly || undefined}
           onFocus={openDropdown}
           onClick={openDropdown}
           onChange={(event) => {
@@ -154,7 +169,7 @@ export function AsyncSelect({
             }
           }}
         />
-        <ChevronDown size={16} className={styles.chevron} aria-hidden="true" />
+        {!readOnly && <ChevronDown size={16} className={styles.chevron} aria-hidden="true" />}
         {isOpen && (
           <div className={styles.dropdown} role="listbox">
             {isLoading ? (

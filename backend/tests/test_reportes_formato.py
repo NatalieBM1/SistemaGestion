@@ -56,7 +56,7 @@ def _assert_encabezados_identicos(generados: list[str], esperados: list[str]) ->
     )
     diferencias = [
         f"  columna {i + 1}: generado={g!r} vs esperado={e!r}"
-        for i, (g, e) in enumerate(zip(generados, esperados))
+        for i, (g, e) in enumerate(zip(generados, esperados, strict=True))
         if g != e
     ]
     assert not diferencias, "Encabezados distintos:\n" + "\n".join(diferencias)
@@ -197,23 +197,9 @@ def test_tipos_de_dato_reporte_facturadas(session):
 # código: si alguien cambia un nombre, el orden o una tilde en cualquiera
 # de los tres lados, falla.
 
-ENCABEZADOS_GENERAL_CLIENTE = (
-    "ID | Numero de remision | Fecha | Forma de pago | ODS | ID del cliente | Cliente | "
-    "Proyecto | Tramo | Origen | Destino | Kilometros | Vehiculos | Cama Baja | "
-    "Hora llegada | Hola salida | ID del conductor | Conductor | Tipo de transporte | "
-    "Observaciones | Id Producto | Producto | Cantidad | Unidad de medida | Valor Material | "
-    "Valor Flete | Numero de viajes | Valor de comision | Valor de costo | Valor cama baja | "
-    "Remision AGRESUR | ID del usuario | Usuario | Estado"
-).split(" | ")
+ENCABEZADOS_GENERAL_CLIENTE = ["ID", "Numero de remision", "Fecha", "Forma de pago", "ODS", "ID del cliente", "Cliente", "Proyecto", "Tramo", "Origen", "Destino", "Kilometros", "Vehiculos", "Cama Baja", "Hora llegada", "Hola salida", "ID del conductor", "Conductor", "Tipo de transporte", "Observaciones", "Id Producto", "Producto", "Cantidad", "Unidad de medida", "Valor Material", "Valor Flete", "Numero de viajes", "Valor de comision", "Valor de costo", "Valor cama baja", "Remision AGRESUR", "ID del usuario", "Usuario", "Estado"]
 
-ENCABEZADOS_FACTURADAS_CLIENTE = (
-    "Numero de remision | Fecha | Forma de pago | ODS | ID cliente | Cliente | Proyecto | "
-    "Tramo | Origen | Destino | Kilometros | Vehiculos | Cama Baja | Hora llegada | "
-    "Hola salida | Conductor | Tipo de transporte | Usuario | ID usuario | ID factura | "
-    "Usuario Factura | ID usuario factura | Número de factura | Fecha de factura | "
-    "Valor flete | Valor Camabaja | Subtotal | Valor Material | Total | Valor facturado | "
-    "Valor pendiente | Estado"
-).split(" | ")
+ENCABEZADOS_FACTURADAS_CLIENTE = ["Numero de remision", "Fecha", "Forma de pago", "ODS", "ID cliente", "Cliente", "Proyecto", "Tramo", "Origen", "Destino", "Kilometros", "Vehiculos", "Cama Baja", "Hora llegada", "Hola salida", "Conductor", "Tipo de transporte", "Usuario", "ID usuario", "ID factura", "Usuario Factura", "ID usuario factura", "Número de factura", "Fecha de factura", "Valor flete", "Valor Camabaja", "Subtotal", "Valor Material", "Total", "Valor facturado", "Valor pendiente", "Estado"]
 
 FILTROS = {
     "desde": None, "hasta": None, "cliente_id": None, "proyecto_id": None,
@@ -317,10 +303,15 @@ def test_dinero_como_numero_entero_si_no_tiene_centavos(hoja_general, session):
     assert with_cents <= en_reporte
 
 
-def test_numero_de_remision_con_el_formato_guardado(hoja_general, session):
-    guardados = set(session.exec(select(Remision.numero_remision)).all())
+def test_numero_de_remision_con_la_forma_de_la_referencia(hoja_general, session):
+    """Bloque 5: como en las hojas de referencia ("GTS-006525"), no como
+    la pantalla ("GTS-6525"). Lo guardado no cambia; es la misma remisión."""
+    from app.core import numero_remision as nr
+
+    guardados = session.exec(select(Remision.numero_remision)).all()
     en_reporte = {c.value for c in _columna(hoja_general.active, "Numero de remision")}
-    assert en_reporte == guardados
+    assert en_reporte == {nr.para_reporte(n) for n in guardados}
+    assert all(nr.clave(v) is None or v == nr.para_reporte(v) for v in en_reporte)
 
 
 def test_facturadas_una_fila_por_remision_y_factura(hoja_facturadas, session):

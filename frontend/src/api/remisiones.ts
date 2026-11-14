@@ -53,6 +53,10 @@ export interface RemisionProducto {
 
 export interface RemisionDetalle extends Remision {
   productos: RemisionProducto[];
+  /** Recibo: "Vendedor" y su "CC No" (vacío si el usuario no la tiene). */
+  usuario_creador_nombre: string | null;
+  usuario_creador_identificacion: string | null;
+  camabaja_placa: string | null;
 }
 
 export interface RemisionListParams {

@@ -1,3 +1,5 @@
+import { formatCantidad } from "../../lib/format";
+
 const OPCIONES = [10, 25, 50, 100];
 
 interface SelectorFilasPorPaginaProps {
@@ -31,7 +33,7 @@ export function rangoRegistros(page: number, pageSize: number, total: number): s
   if (total === 0) return "0 de 0";
   const desde = (page - 1) * pageSize + 1;
   const hasta = Math.min(page * pageSize, total);
-  return `${desde}–${hasta} de ${total.toLocaleString("es-CO")}`;
+  return `${formatCantidad(desde)}–${formatCantidad(hasta)} de ${formatCantidad(total)}`;
 }
 
 /** Recuerda la cantidad de filas por página elegida, por lista, en

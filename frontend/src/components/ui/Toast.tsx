@@ -13,18 +13,18 @@ interface ToastItem {
 
 interface ToastState {
   toasts: ToastItem[];
-  show: (message: string, variant: ToastVariant) => void;
+  show: (message: string, variant: ToastVariant, duracionMs?: number) => void;
   dismiss: (id: string) => void;
 }
 
 const useToastStore = create<ToastState>((set) => ({
   toasts: [],
-  show: (message, variant) => {
+  show: (message, variant, duracionMs = 4000) => {
     const id = Math.random().toString(36).slice(2);
     set((state) => ({ toasts: [...state.toasts, { id, message, variant }] }));
     setTimeout(() => {
       set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) }));
-    }, 4000);
+    }, duracionMs);
   },
   dismiss: (id) => set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) })),
 }));
@@ -32,8 +32,8 @@ const useToastStore = create<ToastState>((set) => ({
 export function useToast() {
   const show = useToastStore((state) => state.show);
   return {
-    success: (message: string) => show(message, "success"),
-    error: (message: string) => show(message, "error"),
+    success: (message: string, duracionMs?: number) => show(message, "success", duracionMs),
+    error: (message: string, duracionMs?: number) => show(message, "error", duracionMs),
   };
 }
 

@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlmodel import Field, SQLModel
 
@@ -9,12 +8,12 @@ from app.core.fechas import ahora_utc
 class Usuario(SQLModel, table=True):
     __tablename__ = "usuarios"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     nombre: str
     email: str = Field(unique=True)
     # Cédula / identificación del usuario (opcional). Es lo que sale en
     # "ID del usuario" / "ID usuario" / "ID usuario factura" de los reportes.
-    identificacion: Optional[str] = Field(default=None, max_length=30)
+    identificacion: str | None = Field(default=None, max_length=30)
     password_hash: str
     activo: bool = Field(default=True)
     creado_en: datetime = Field(default_factory=ahora_utc)
@@ -24,8 +23,8 @@ class Usuario(SQLModel, table=True):
     )
     # Recuperación de contraseña: código de 6 dígitos (guardado como HMAC,
     # ver core/security.py) + expiración + intentos fallidos con ese código.
-    reset_token: Optional[str] = Field(default=None)
-    reset_token_expires: Optional[datetime] = Field(default=None)
+    reset_token: str | None = Field(default=None)
+    reset_token_expires: datetime | None = Field(default=None)
     reset_intentos: int = Field(default=0, sa_column_kwargs={"server_default": "0"})
     # Va dentro de cada JWT ("ver"). Subirla invalida todos los tokens ya
     # emitidos del usuario (reset de contraseña, cambio por el admin,
@@ -36,14 +35,14 @@ class Usuario(SQLModel, table=True):
 class Rol(SQLModel, table=True):
     __tablename__ = "roles"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     nombre: str = Field(unique=True)
 
 
 class Permiso(SQLModel, table=True):
     __tablename__ = "permisos"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     codigo: str = Field(unique=True)
     modulo: str
 

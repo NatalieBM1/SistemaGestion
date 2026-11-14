@@ -1,0 +1,19 @@
+.pie {
+  padding: var(--space-4) var(--space-3);
+  text-align: center;
+}
+
+.pie p {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  opacity: 0.85;
+  /* En móvil el texto se parte en dos líneas en vez de desbordar. */
+  overflow-wrap: anywhere;
+}
+
+@media print {
+  .pie {
+    display: none;
+  }
+}

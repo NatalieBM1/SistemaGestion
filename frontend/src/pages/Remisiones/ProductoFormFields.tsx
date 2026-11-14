@@ -1,6 +1,7 @@
 import type { Control, UseFormRegister } from "react-hook-form";
 import { Controller } from "react-hook-form";
-import { AsyncSelect, Input } from "../../components/ui";
+import { AsyncSelect, InputNumero } from "../../components/ui";
+import { formatUnidad } from "../../lib/format";
 
 export interface ProductoFormRow {
   producto_id: number | null;
@@ -26,15 +27,53 @@ export const PRODUCTO_DEFAULT: ProductoFormRow = {
   valor_costo: "0",
 };
 
+type CampoNumerico = Exclude<keyof ProductoFormRow, "producto_id" | "unidad_medida_id">;
+
+function CampoNumero({
+  control,
+  name,
+  label,
+  moneda,
+  entero,
+}: {
+  control: Control<ProductoFormRow>;
+  name: CampoNumerico;
+  label: string;
+  moneda?: boolean;
+  entero?: boolean;
+}) {
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <InputNumero
+          label={label}
+          moneda={moneda}
+          entero={entero}
+          value={field.value ?? ""}
+          onChange={field.onChange}
+          onBlur={field.onBlur}
+          name={field.name}
+        />
+      )}
+    />
+  );
+}
+
 /** Los 9 campos del formulario de línea de producto, compartidos entre
  * ProductosSection (formulario completo de la remisión) y ProductosModal
  * (entrada rápida desde el listado) para no duplicar este markup. */
 export function ProductoFormFields({
   control,
-  register,
+  conCamabaja,
 }: {
   control: Control<ProductoFormRow>;
-  register: UseFormRegister<ProductoFormRow>;
+  /** Se mantiene por compatibilidad con quien lo pasa; los campos numéricos
+   * van con Controller (InputNumero). */
+  register?: UseFormRegister<ProductoFormRow>;
+  /** El valor de cama baja solo existe si la remisión tiene cama baja. */
+  conCamabaja: boolean;
 }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "var(--space-3)" }}>
@@ -59,19 +98,19 @@ export function ProductoFormFields({
           <AsyncSelect
             label="Unidad de medida"
             endpoint="/api/catalogos/unidades_medida"
-            getLabel={(item) => String(item.nombre)}
+            getLabel={(item) => formatUnidad(String(item.nombre))}
             value={field.value}
             onChange={field.onChange}
           />
         )}
       />
-      <Input label="Cantidad" type="number" step="0.001" {...register("cantidad")} />
-      <Input label="Valor material" type="number" step="0.01" {...register("valor_material")} />
-      <Input label="Valor flete" type="number" step="0.01" {...register("valor_flete")} />
-      <Input label="Valor cama baja" type="number" step="0.01" {...register("valor_camabaja")} />
-      <Input label="Número de viajes" type="number" {...register("numero_viajes")} />
-      <Input label="Valor comisión" type="number" step="0.01" {...register("valor_comision")} />
-      <Input label="Valor costo" type="number" step="0.01" {...register("valor_costo")} />
+      <CampoNumero control={control} name="cantidad" label="Cantidad" />
+      <CampoNumero control={control} name="valor_material" label="Valor material" moneda />
+      <CampoNumero control={control} name="valor_flete" label="Valor flete" moneda />
+      {conCamabaja && <CampoNumero control={control} name="valor_camabaja" label="Valor cama baja" moneda />}
+      <CampoNumero control={control} name="numero_viajes" label="Número de viajes" entero />
+      <CampoNumero control={control} name="valor_comision" label="Valor comisión" moneda />
+      <CampoNumero control={control} name="valor_costo" label="Valor costo" moneda />
     </div>
   );
 }

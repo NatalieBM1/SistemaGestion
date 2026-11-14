@@ -2,16 +2,16 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.core.config import settings  # noqa: E402
-from app.models import *  # noqa: E402,F401,F403
-from sqlmodel import SQLModel  # noqa: E402
+from sqlmodel import SQLModel
+
+from app.core.config import settings
+from app.models import *  # noqa: F403
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

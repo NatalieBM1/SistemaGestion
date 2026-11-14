@@ -2,8 +2,6 @@
 .venv/
 backend/.venv/
 __pycache__/
-backend/__pycache__/
-backend/**/__pycache__/
 **/__pycache__/
 *.pyc
 *.pyo
@@ -14,32 +12,37 @@ backend/dist/
 *.egg-info/
 
 # ── Node ─────────────────────────────────────────────────────────────────────
+node_modules/
 frontend/node_modules/
 frontend/dist/
+dist/
 frontend/.vite/
 
-# ── Variables de entorno (nunca commitear secretos) ──────────────────────────
+# ── Variables de entorno — NUNCA versionar secretos reales ──────────────────
 .env
 .env.*
-frontend/.env
-*.env.local
-*.env.*.local
+# .env.example sí va versionado (solo tiene CAMBIAR_ESTA_CLAVE, no secretos)
+!.env.example
 
-# ── Datos de importación y backups (la BD se entrega ya cargada) ─────────────
+# ── Backups, dumps y datos sensibles ────────────────────────────────────────
+backups/
+_privado/
+capturas/
+*.dump
+*.sql
+*.sql.gz
 backend/app/data_import/backups/
 backend/app/data_import/*.xlsm
 backend/app/data_import/*.csv
-*.dump
-*.sql.gz
+backend/app/data_import/*.xlsx
 
-# ── Archivos temporales y logs ────────────────────────────────────────────────
-tmp_*
+# ── Logs y temporales ────────────────────────────────────────────────────────
 *.log
 *.tmp
+tmp_*
 
 # ── Editor ────────────────────────────────────────────────────────────────────
-.vscode/*
-!.vscode/extensions.json
+.vscode/
 .idea/
 *.suo
 *.ntvs*
@@ -50,6 +53,3 @@ tmp_*
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Diferencias de valor total (Parte 6.1, sesión 4): análisis con datos reales del cliente
-backups/diferencias_valor_total_remisiones.csv

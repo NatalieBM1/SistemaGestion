@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban } from "lucide-react";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { getApiErrorMessage } from "../../api/errors";
 import {
   anularFacturacion,
@@ -9,9 +9,9 @@ import {
   getHistorialFacturacion,
   getResumenFacturacion,
 } from "../../api/facturas";
-import { Badge, Button, Input, Modal, Select, useToast } from "../../components/ui";
+import { Badge, Button, Input, InputNumero, Modal, Select, useToast } from "../../components/ui";
 import { ESTADO_FACTURACION_LABEL, ESTADO_FACTURACION_VARIANT } from "../../lib/estadoFacturacion";
-import { formatMoney } from "../../lib/format";
+import { formatCOP } from "../../lib/format";
 import styles from "../../components/CatalogoCRUD.module.css";
 import tableStyles from "../../components/ui/Table.module.css";
 
@@ -101,15 +101,15 @@ export function FacturacionPanel({
         </div>
         <div>
           <div style={{ fontSize: "var(--text-caption)", color: "var(--text-secondary)" }}>Valor total</div>
-          <div className="font-mono-data">{resumen ? formatMoney(resumen.valor_total) : "—"}</div>
+          <div className="cifras">{resumen ? formatCOP(resumen.valor_total) : "—"}</div>
         </div>
         <div>
           <div style={{ fontSize: "var(--text-caption)", color: "var(--text-secondary)" }}>Facturado</div>
-          <div className="font-mono-data">{resumen ? formatMoney(resumen.valor_facturado) : "—"}</div>
+          <div className="cifras">{resumen ? formatCOP(resumen.valor_facturado) : "—"}</div>
         </div>
         <div>
           <div style={{ fontSize: "var(--text-caption)", color: "var(--text-secondary)" }}>Saldo pendiente</div>
-          <div className="font-mono-data">{resumen ? formatMoney(resumen.saldo_pendiente) : "—"}</div>
+          <div className="cifras">{resumen ? formatCOP(resumen.saldo_pendiente) : "—"}</div>
         </div>
       </div>
 
@@ -137,10 +137,10 @@ export function FacturacionPanel({
                     textDecoration: h.anulada ? "line-through" : "none",
                   }}
                 >
-                  <td className="font-mono-data">{h.numero_factura}</td>
+                  <td className="cifras">{h.numero_factura}</td>
                   <td>{h.fecha_factura}</td>
                   <td>{h.tipo_facturacion}</td>
-                  <td className="font-mono-data">{formatMoney(h.valor_facturado)}</td>
+                  <td className="cifras">{formatCOP(h.valor_facturado)}</td>
                   <td style={{ textDecoration: "none" }}>
                     <Badge variant={h.anulada ? "danger" : "success"}>{h.anulada ? "Anulada" : "Activa"}</Badge>
                   </td>
@@ -220,6 +220,7 @@ function FacturarModal({
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     reset,
@@ -305,16 +306,25 @@ function FacturarModal({
         </Select>
 
         {tipo === "PARCIAL" && (
-          <Input
-            label="Valor a facturar"
-            type="number"
-            step="0.01"
-            hint={`Saldo pendiente: ${formatMoney(saldoPendiente)}`}
-            error={errors.valor_facturado?.message}
-            {...register("valor_facturado", {
+          <Controller
+            control={control}
+            name="valor_facturado"
+            rules={{
               required: "El valor es obligatorio cuando el tipo es Parcial.",
-              min: { value: 0.01, message: "El valor debe ser mayor que cero." },
-            })}
+              validate: (v) => Number(v) > 0 || "El valor debe ser mayor que cero.",
+            }}
+            render={({ field }) => (
+              <InputNumero
+                label="Valor a facturar"
+                moneda
+                hint={`Saldo pendiente: ${formatCOP(saldoPendiente)}`}
+                error={errors.valor_facturado?.message}
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
+              />
+            )}
           />
         )}
       </form>

@@ -3,8 +3,6 @@
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
 @import "@fontsource/inter/700.css";
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
 @import "./tokens.css";
 
 * {
@@ -68,9 +66,10 @@ a {
 }
 
 /* Datos alfanuméricos: números de remisión, placas, facturas, montos */
-.font-mono-data {
-  font-family: var(--font-mono);
-  font-feature-settings: "tnum" 1;
+/* Datos operativos (cantidades, valores, placas, números): misma familia
+   que el resto, con cifras de ancho fijo para que se alineen en columnas. */
+.cifras {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Foco de teclado visible y consistente */

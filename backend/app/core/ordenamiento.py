@@ -12,12 +12,34 @@ Cada router mantiene su propia lista blanca de columnas ordenables
   teléfono), así "98" va antes que "1085" y no al revés.
 """
 
-from sqlalchemy import Numeric, case, cast
+from sqlalchemy import Numeric, case, cast, func
+
+from app.core.texto import normalizar
+
+_CON_TILDE = "ÁÉÍÓÚÜÑáéíóúüñ"
+_SIN_TILDE = "AEIOUUNaeiouun"
 
 
 def texto_como_numero(columna) -> list:
     """Solo-dígitos se comparan como número; el resto va después, por texto."""
     return [case((columna.op("~")(r"^\d+$"), cast(columna, Numeric)), else_=None), columna]
+
+
+def texto_normalizado_sql(columna):
+    """Columna en minúsculas y sin tildes, para comparar/ordenar igual que
+    core.texto.normalizar (sin depender de la extensión unaccent)."""
+    return func.lower(func.translate(columna, _CON_TILDE, _SIN_TILDE))
+
+
+def orden_por_prioridad(columna, prioridad: list[str]) -> list:
+    """Primero los valores de `prioridad`, en ese orden; después el resto
+    alfabético. Sin distinguir mayúsculas ni tildes ("Metro cúbico" =
+    "METRO CÚBICO")."""
+    normal = texto_normalizado_sql(columna)
+    posicion = case(
+        {normalizar(v): i for i, v in enumerate(prioridad)}, value=normal, else_=len(prioridad)
+    )
+    return [posicion, normal]
 
 
 def clausulas_orden(expresiones: list, sentido: str, desempate) -> list:

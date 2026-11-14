@@ -60,7 +60,6 @@ class AgregarRemisionesFacturaResponse(BaseModel):
     remisiones_agregadas: int
     valor_agregado: Decimal
     remisiones_ids: list[int]
-    remisiones_ids: list[int]
 
 
 class ResumenFacturacionRemisionRead(BaseModel):

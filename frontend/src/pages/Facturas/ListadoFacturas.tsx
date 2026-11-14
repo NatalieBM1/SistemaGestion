@@ -23,7 +23,7 @@ import {
 } from "../../components/ui";
 import { useOrdenamiento } from "../../hooks/useOrdenamiento";
 import { canWrite } from "../../lib/permissions";
-import { formatMoney } from "../../lib/format";
+import { formatCantidad, formatCOP } from "../../lib/format";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "../../components/CatalogoCRUD.module.css";
@@ -82,14 +82,14 @@ export function ListadoFacturas() {
       key: "cantidad_remisiones",
       header: "Remisiones",
       sortField: "cantidad_remisiones",
-      render: (f) => f.cantidad_remisiones,
+      render: (f) => formatCantidad(f.cantidad_remisiones),
     },
     {
       key: "valor_total_facturado",
       sortField: "valor_total_facturado",
       header: "Valor total facturado",
       align: "right",
-      render: (f) => formatMoney(f.valor_total_facturado),
+      render: (f) => formatCOP(f.valor_total_facturado),
     },
     {
       key: "acciones",

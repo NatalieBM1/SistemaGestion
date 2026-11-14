@@ -3,7 +3,7 @@
 Los encabezados y el orden de columnas son los que pidió el cliente (ver
 ``backend/app/data_import/formatos/reporte-remisiones-*-programa_nuevo.xlsx``,
 columna E de cada archivo) — no se pueden reordenar ni renombrar sin que el
-cliente lo confirme. Ver NOTAS_RETOMAR.md / informe de entrega para los
+cliente lo confirme. Ver docs/NOTAS_RETOMAR.md / informe de entrega para los
 supuestos de mapeo de cada columna "ID".
 """
 
@@ -16,8 +16,16 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from sqlmodel import Session, select
 
+from app.core import numero_remision as numero_remision_svc
 from app.models.activo import Activo
-from app.models.catalogos import FormaPago, Producto, Proyecto, TipoServicio, Tramo, UnidadMedida
+from app.models.catalogos import (
+    FormaPago,
+    Producto,
+    Proyecto,
+    TipoServicio,
+    Tramo,
+    UnidadMedida,
+)
 from app.models.facturacion import Factura, RemisionFacturacion
 from app.models.orden_servicio import OrdenServicio
 from app.models.remision import Remision, RemisionProducto
@@ -172,7 +180,8 @@ def _datos_comunes(cat: _Catalogos, remision: Remision) -> dict[str, Any]:
 
     return {
         "id": remision.id,
-        "numero_remision": remision.numero_remision,
+        # Forma de las hojas de referencia del cliente: "GTS-006525".
+        "numero_remision": numero_remision_svc.para_reporte(remision.numero_remision),
         "fecha": remision.fecha,
         "forma_pago": forma_pago.nombre if forma_pago else None,
         "ods": orden_servicio.numero if orden_servicio else None,

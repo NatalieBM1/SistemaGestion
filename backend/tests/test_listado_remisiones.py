@@ -66,7 +66,9 @@ def test_listado_identico_a_la_serializacion_fila_por_fila(pg_engine, ordenar_po
 
 def test_listado_hace_un_numero_fijo_de_consultas(pg_engine, session):
     consultas = []
-    oyente = lambda *a, **k: consultas.append(1)
+    def oyente(*a, **k):
+        consultas.append(1)
+
     event.listen(pg_engine, "before_cursor_execute", oyente)
     try:
         for page_size in (20, 100):

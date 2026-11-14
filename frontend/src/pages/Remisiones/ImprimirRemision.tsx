@@ -7,6 +7,7 @@ import { getRemision } from "../../api/remisiones";
 import { getTercero } from "../../api/terceros";
 import { Button } from "../../components/ui";
 import { ReciboRemision } from "./ReciboRemision";
+import { formatNumeroRemision } from "../../lib/formatNumeroRemision";
 import styles from "./ImprimirRemision.module.css";
 
 interface NombreItem {
@@ -103,7 +104,7 @@ export function ImprimirRemision() {
 
   useEffect(() => {
     if (!listoParaImprimir || !remision) return;
-    document.title = `Remisión ${remision.numero_remision}`;
+    document.title = `Remisión ${formatNumeroRemision(remision.numero_remision)}`;
     const timeout = setTimeout(() => window.print(), 400);
     return () => clearTimeout(timeout);
   }, [listoParaImprimir, remision]);

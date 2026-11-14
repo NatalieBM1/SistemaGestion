@@ -51,6 +51,19 @@
   cursor: not-allowed;
 }
 
+/* Solo lectura: se ve como dato (no atenuado) y se puede seleccionar y
+   copiar; a diferencia de :disabled, que el navegador no deja seleccionar. */
+.input:read-only:not(:disabled) {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  cursor: text;
+}
+
+.input:read-only:not(:disabled):focus {
+  border-color: var(--border);
+  box-shadow: none;
+}
+
 .inputError {
   border-color: var(--danger);
 }
@@ -139,4 +152,17 @@
 
 .hasIcon {
   padding-left: 40px;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+
+/* El botón de copiar no debe hacer más alta la fila de la etiqueta:
+   así queda alineada con las de los campos que no lo tienen. */
+.labelRow > button {
+  margin-block: -6px;
 }

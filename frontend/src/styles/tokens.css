@@ -78,7 +78,11 @@
 
   /* ── Tipografía ──────────────────────────────────────────────────────────── */
   --font-ui:   "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  /* Una sola tipografía en toda la interfaz: --font-mono existe por
+     compatibilidad pero apunta a la misma familia. Las cifras se alinean
+     con font-variant-numeric: tabular-nums (clase .cifras), no con otra
+     fuente. El recibo impreso usa su propia fuente (Calibri) y no cambia. */
+  --font-mono: var(--font-ui);
 
   --text-caption:  12px;
   --text-body:     14px;

@@ -17,6 +17,8 @@ export interface Municipio {
   codigo_dane: string;
   nombre: string;
   departamento_id: number;
+  departamento_nombre?: string | null;
+  presentacion?: string | null;
 }
 
 export async function listDepartamentos(

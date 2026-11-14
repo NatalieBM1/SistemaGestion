@@ -7,7 +7,7 @@ from app.core.config import settings
 #   = 1 × 1 × (3 + 7) = 10 conexiones como máximo, dejando margen para
 #   alembic/seed al arrancar, psql y conexiones de mantenimiento.
 # Si se suben workers o instancias, rehacer la cuenta con
-# DB_POOL_SIZE / DB_MAX_OVERFLOW (ver NOTAS_RETOMAR.md).
+# DB_POOL_SIZE / DB_MAX_OVERFLOW (ver docs/NOTAS_RETOMAR.md).
 # pool_pre_ping descarta conexiones que Postgres cerró por inactividad.
 engine = create_engine(
     settings.database_url,

@@ -67,7 +67,8 @@ def _parsear_fecha(valor: Any) -> date:
         return valor
     if isinstance(valor, str):
         try:
-            return datetime.strptime(valor.strip(), "%d/%m/%Y").date()
+            # Solo la fecha (dd/mm/aaaa): la zona horaria no aplica.
+            return datetime.strptime(valor.strip(), "%d/%m/%Y").date()  # noqa: DTZ007
         except ValueError:
             pass
     raise HTTPException(

@@ -1,0 +1,32 @@
+# Configuración de herramientas del backend (no es un paquete instalable).
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = ["app/data_import"]
+
+[tool.ruff.lint]
+# Reglas del proyecto:
+#   E/W  estilo PEP 8       F    errores reales (imports sin uso, nombres indefinidos…)
+#   I    orden de imports   B    bugs probables (bugbear)
+#   UP   sintaxis moderna   DTZ  fechas sin zona horaria (criterio: core/fechas.ahora_utc)
+#   SIM  simplificaciones   PIE  redundancias   RUF  reglas propias de ruff
+select = ["E", "W", "F", "I", "B", "UP", "DTZ", "SIM", "PIE", "RUF"]
+ignore = [
+    "E501",    # largo de línea: no se usa formateador automático
+    "B008",    # Depends(...) como valor por defecto es el patrón oficial de FastAPI
+    "RUF001",  # caracteres "ambiguos": el código y los mensajes están en español
+    "RUF002",
+    "RUF003",
+    "UP046",   # Generic[...] en vez de la sintaxis de tipos de Python 3.12 (Pydantic)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Migraciones generadas por Alembic: se dejan con su estilo original.
+"alembic/versions/*" = ["UP007", "UP035", "I001", "F401", "W291"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

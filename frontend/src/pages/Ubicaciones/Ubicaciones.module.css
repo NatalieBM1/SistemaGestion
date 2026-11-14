@@ -39,6 +39,7 @@
 
 /* Nombre del departamento: botón que lo elige (teclado incluido). */
 .selectorFila {
+  user-select: text;
   background: none;
   border: none;
   padding: 0;

@@ -10,6 +10,8 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import aliased
 from sqlmodel import Session, func, select
 
+from app.core import numero_remision as numero_remision_svc
+from app.core.texto import normalizar
 from app.models.activo import Activo
 from app.models.auditoria import Auditoria
 from app.models.catalogos import Prefijo, Producto, TipoServicio, UnidadMedida
@@ -17,6 +19,7 @@ from app.models.orden_servicio import OrdenServicio
 from app.models.remision import Remision, RemisionProducto
 from app.models.tercero import Tercero
 from app.models.ubicacion import Municipio
+from app.models.usuario import Usuario
 from app.schemas.remision import ProductoRemisionRead, RemisionDetalleRead, RemisionRead
 
 NOMBRE_TIPO_SERVICIO_CAMABAJA = "Cama baja"
@@ -28,13 +31,14 @@ UMBRAL_ALERTA_SALDO_BAJO = Decimal("0.10")
 
 
 def _verificar_numero_remision_unico(session: Session, numero_remision: str) -> None:
+    # "GTS-6528" y "GTS-006528" son la misma remisión.
     existente = session.exec(
-        select(Remision).where(Remision.numero_remision == numero_remision)
+        select(Remision).where(numero_remision_svc.condicion_mismo_numero(numero_remision))
     ).first()
     if existente is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Ya existe una remisión con numero_remision '{numero_remision}'",
+            detail=f"Ya existe la remisión {numero_remision_svc.para_mostrar(existente.numero_remision)}.",
         )
 
 
@@ -51,7 +55,7 @@ def generar_numero_remision_automatico(
         consecutivo_str = f"{consecutivo_base:06d}"
         numero_remision = f"{prefijo.codigo}-{consecutivo_str}"
         existe = session.exec(
-            select(Remision).where(Remision.numero_remision == numero_remision)
+            select(Remision).where(numero_remision_svc.condicion_mismo_numero(numero_remision))
         ).first()
         if existe is None:
             prefijo.consecutivo_actual = consecutivo_base
@@ -101,14 +105,44 @@ def resolver_numero_remision(
 # --- reglas de negocio ---
 
 
+MENSAJE_SIN_CAMABAJA = (
+    "Esta remisión no tiene cama baja: el valor de cama baja debe quedar "
+    "vacío o en 0. Agrega primero la cama baja en los datos de la remisión."
+)
+
+
+def validar_valor_camabaja(remision: Remision, valor: Decimal | None) -> Decimal:
+    """El valor de cama baja de un producto solo puede ser distinto de 0 si
+    la remisión tiene cama baja (camabaja_id). Vacío cuenta como 0."""
+    valor = valor if valor is not None else Decimal(0)
+    if valor != 0 and remision.camabaja_id is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=MENSAJE_SIN_CAMABAJA)
+    return valor
+
+
+def productos_con_valor_camabaja(session: Session, remision: Remision) -> list[RemisionProducto]:
+    return list(
+        session.exec(
+            select(RemisionProducto).where(
+                RemisionProducto.remision_id == remision.id, RemisionProducto.valor_camabaja != 0
+            )
+        ).all()
+    )
+
+
 def validar_camabaja(
     session: Session, tipo_servicio_id: int | None, camabaja_id: int | None
 ) -> None:
     """El tipo de servicio 'Cama baja' exige camabaja_id; cualquier otro tipo
     debe dejarlo en NULL."""
-    tipo_camabaja = session.exec(
-        select(TipoServicio).where(TipoServicio.nombre == NOMBRE_TIPO_SERVICIO_CAMABAJA)
-    ).first()
+    tipo_camabaja = next(
+        (
+            t
+            for t in session.exec(select(TipoServicio)).all()
+            if normalizar(t.nombre) == normalizar(NOMBRE_TIPO_SERVICIO_CAMABAJA)
+        ),
+        None,
+    )
     es_camabaja = tipo_camabaja is not None and tipo_servicio_id == tipo_camabaja.id
 
     if es_camabaja and camabaja_id is None:
@@ -410,7 +444,12 @@ def serializar_remision_detalle(session: Session, remision: Remision) -> Remisio
     productos = session.exec(
         select(RemisionProducto).where(RemisionProducto.remision_id == remision.id)
     ).all()
+    creador = session.get(Usuario, remision.usuario_creador_id) if remision.usuario_creador_id else None
+    camabaja = session.get(Activo, remision.camabaja_id) if remision.camabaja_id else None
     return RemisionDetalleRead(
         **base.model_dump(),
         productos=[serializar_producto(session, p) for p in productos],
+        usuario_creador_nombre=creador.nombre if creador else None,
+        usuario_creador_identificacion=creador.identificacion if creador else None,
+        camabaja_placa=camabaja.placa if camabaja else None,
     )

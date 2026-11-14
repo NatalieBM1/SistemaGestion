@@ -12,7 +12,7 @@ import {
 } from "../../api/remisiones";
 import { Button, Modal, useToast } from "../../components/ui";
 import { canWrite } from "../../lib/permissions";
-import { formatMoney } from "../../lib/format";
+import { formatCantidad, formatCOP, formatUnidad } from "../../lib/format";
 import { formatNumeroRemision } from "../../lib/formatNumeroRemision";
 import { useAuthStore } from "../../store/authStore";
 import { PRODUCTO_DEFAULT, ProductoFormFields, type ProductoFormRow } from "./ProductoFormFields";
@@ -140,7 +140,7 @@ export function ProductosModal({
       unidad_medida_id: values.unidad_medida_id,
       valor_material: Number(values.valor_material),
       valor_flete: Number(values.valor_flete),
-      valor_camabaja: Number(values.valor_camabaja),
+      valor_camabaja: remision?.camabaja_id != null ? Number(values.valor_camabaja) : 0,
       numero_viajes: Number(values.numero_viajes),
       valor_comision: Number(values.valor_comision),
       valor_costo: Number(values.valor_costo),
@@ -212,20 +212,20 @@ export function ProductosModal({
                     <th>Unidad</th>
                     <th>Valor material</th>
                     <th>Valor flete</th>
-                    <th>Valor cama baja</th>
+                    {remision?.camabaja_id != null && <th>Valor cama baja</th>}
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {productos.map((p) => (
                     <tr key={p.id}>
-                      <td className="font-mono-data">{p.id}</td>
+                      <td className="cifras">{p.id}</td>
                       <td>{p.producto_nombre ?? p.producto_id}</td>
-                      <td className="font-mono-data">{p.cantidad}</td>
-                      <td>{p.unidad_medida_nombre ?? "—"}</td>
-                      <td className="font-mono-data">{formatMoney(p.valor_material)}</td>
-                      <td className="font-mono-data">{formatMoney(p.valor_flete)}</td>
-                      <td className="font-mono-data">{formatMoney(p.valor_camabaja)}</td>
+                      <td className="cifras">{formatCantidad(p.cantidad)}</td>
+                      <td>{formatUnidad(p.unidad_medida_nombre) || "—"}</td>
+                      <td className="cifras">{formatCOP(p.valor_material)}</td>
+                      <td className="cifras">{formatCOP(p.valor_flete)}</td>
+                      {remision?.camabaja_id != null && <td className="cifras">{formatCOP(p.valor_camabaja)}</td>}
                       <td className={tableStyles.alignRight}>
                         {!bloqueada && (
                           <div className={tableStyles.actionsCell}>
@@ -260,7 +260,7 @@ export function ProductosModal({
       ) : (
         <form id="producto-modal-form" onSubmit={onSubmit} className={styles.form} noValidate>
           {error && <div className={styles.formError}>{error}</div>}
-          <ProductoFormFields control={control} register={register} />
+          <ProductoFormFields control={control} register={register} conCamabaja={remision?.camabaja_id != null} />
         </form>
       )}
     </Modal>

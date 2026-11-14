@@ -22,8 +22,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { apiClient } from "../../api/client";
 import { getApiErrorMessage } from "../../api/errors";
 import { createRemision, getRemision, updateRemision } from "../../api/remisiones";
-import { formatMoney } from "../../lib/format";
-import { AsyncSelect, Button, Input, PageHeader, TabsBar, useToast, type TabItem } from "../../components/ui";
+import { formatCOP } from "../../lib/format";
+import { AsyncSelect, BotonCopiar, Button, Input, InputNumero, Modal, PageHeader, type TabItem, TabsBar, useToast } from "../../components/ui";
+import { normalizarTexto } from "../../lib/texto";
 import { canWrite } from "../../lib/permissions";
 import { useAuthStore } from "../../store/authStore";
 import { formatNumeroRemision } from "../../lib/formatNumeroRemision";
@@ -32,6 +33,10 @@ import { FacturacionPanel } from "./FacturacionPanel";
 import { ProductosSection } from "./ProductosSection";
 import styles from "../../components/CatalogoCRUD.module.css";
 import formStyles from "./RemisionForm.module.css";
+
+/** Texto que copia el botón junto a origen/destino: "MUNICIPIO, DEPARTAMENTO". */
+const textoUbicacion = (item: Record<string, unknown>) =>
+  [item.nombre, item.departamento_nombre].filter(Boolean).join(", ");
 
 const NOMBRE_TIPO_SERVICIO_CAMABAJA = "Cama baja";
 
@@ -154,11 +159,18 @@ export function RemisionForm() {
   }, [remision, reset]);
 
   const prefijoSeleccionado = prefijos?.find((p) => p.id === watch("prefijo_id"));
-  const tipoServicioCamabaja = tiposServicio?.find((t) => t.nombre === NOMBRE_TIPO_SERVICIO_CAMABAJA);
+  const tipoServicioCamabaja = tiposServicio?.find(
+    (t) => normalizarTexto(t.nombre) === normalizarTexto(NOMBRE_TIPO_SERVICIO_CAMABAJA),
+  );
   const esCamabaja = tipoServicioCamabaja != null && watch("tipo_servicio_id") === tipoServicioCamabaja.id;
   const proyectoId = watch("proyecto_id");
 
   const bloqueada = remision?.estado_facturacion === "FACTURADA";
+
+  // Quitar la cama baja con productos que tienen valor de cama baja: se
+  // pide confirmación y el backend deja ese valor en 0.
+  const [confirmarQuitarCamabaja, setConfirmarQuitarCamabaja] = useState<Record<string, unknown> | null>(null);
+  const productosConValorCamabaja = (remision?.productos ?? []).filter((p) => Number(p.valor_camabaja) !== 0).length;
 
   const crearMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) => createRemision(payload),
@@ -194,10 +206,9 @@ export function RemisionForm() {
       setServerError("El tipo de servicio 'Cama baja' requiere especificar el activo de cama baja.");
       return;
     }
-    if (!esCamabaja && values.camabaja_id) {
-      setServerError("El campo de cama baja solo aplica cuando el tipo de servicio es 'Cama baja'.");
-      return;
-    }
+    // Si el tipo de servicio ya no es "Cama baja", el campo está oculto y su
+    // valor anterior se descarta (camabaja_id va null en el envío); antes
+    // este caso daba error y no dejaba quitar la cama baja.
     if (!values.cliente_id || !values.origen_municipio_id || !values.destino_municipio_id || !values.prefijo_id) {
       setServerError("Completa los campos obligatorios: prefijo, cliente, origen y destino.");
       return;
@@ -224,6 +235,11 @@ export function RemisionForm() {
     };
 
     if (isEditing) {
+      const quitaCamabaja = remision?.camabaja_id != null && basePayload.camabaja_id == null;
+      if (quitaCamabaja && productosConValorCamabaja > 0) {
+        setConfirmarQuitarCamabaja(basePayload);
+        return;
+      }
       actualizarMutation.mutate(basePayload);
     } else {
       crearMutation.mutate({
@@ -363,9 +379,10 @@ export function RemisionForm() {
                     endpoint="/api/terceros"
                     params={{ tipo: "cliente" }}
                     getLabel={(item) => String(item.nombre)}
+                    copiar={(item) => String(item.nombre)}
                     value={field.value}
                     onChange={field.onChange}
-                    disabled={bloqueada}
+                    readOnly={bloqueada}
                     placeholder="Buscar por nombre o NIT"
                     icon={<User size={16} aria-hidden="true" />}
                     required
@@ -383,11 +400,11 @@ export function RemisionForm() {
                     label="Número de orden de servicio"
                     endpoint="/api/ordenes-servicio"
                     getLabel={(item) =>
-                      `${item.numero} — ${formatMoney(Number(item.saldo_disponible))} disponible`
+                      `${item.numero} — ${formatCOP(Number(item.saldo_disponible))} disponible`
                     }
                     value={field.value}
                     onChange={field.onChange}
-                    disabled={bloqueada}
+                    readOnly={bloqueada}
                     placeholder="Opcional"
                     icon={<FileText size={16} aria-hidden="true" />}
                   />
@@ -404,7 +421,7 @@ export function RemisionForm() {
               <Input
                 label="Número de remisión (manual)"
                 placeholder="Ej: 00123"
-                disabled={isEditing || bloqueada}
+                readOnly={isEditing || bloqueada}
                 error={errors.numero_remision?.message}
                 leftElement={<FileText size={16} aria-hidden="true" />}
                 {...register("numero_remision")}
@@ -413,9 +430,13 @@ export function RemisionForm() {
               <Input
                 label="Número de consecutivo"
                 value={isEditing ? formatNumeroRemision(remision?.numero_remision) : "Automático"}
-                disabled
                 readOnly
                 leftElement={<FileText size={16} aria-hidden="true" />}
+                rightElement={
+                  isEditing ? (
+                    <BotonCopiar texto={formatNumeroRemision(remision?.numero_remision)} que="número de remisión" />
+                  ) : undefined
+                }
               />
             )}
 
@@ -429,7 +450,7 @@ export function RemisionForm() {
                   getLabel={(item) => `${item.codigo}${item.es_manual ? " (manual)" : ""}`}
                   value={field.value}
                   onChange={field.onChange}
-                  disabled={isEditing || bloqueada}
+                  readOnly={isEditing || bloqueada}
                   placeholder="Seleccionar"
                   icon={<Tag size={16} aria-hidden="true" />}
                   required
@@ -440,7 +461,7 @@ export function RemisionForm() {
             <Input
               label="Fecha"
               type="date"
-              disabled={bloqueada}
+              readOnly={bloqueada}
               error={errors.fecha?.message}
               leftElement={<Calendar size={16} aria-hidden="true" />}
               {...register("fecha", { required: "La fecha es obligatoria." })}
@@ -456,7 +477,7 @@ export function RemisionForm() {
                   getLabel={(item) => String(item.nombre)}
                   value={field.value}
                   onChange={field.onChange}
-                  disabled={bloqueada}
+                  readOnly={bloqueada}
                   placeholder="Seleccionar"
                   icon={<CreditCard size={16} aria-hidden="true" />}
                 />
@@ -473,7 +494,7 @@ export function RemisionForm() {
                   getLabel={(item) => String(item.nombre)}
                   value={field.value}
                   onChange={field.onChange}
-                  disabled={bloqueada}
+                  readOnly={bloqueada}
                   placeholder="Seleccionar"
                   icon={<Truck size={16} aria-hidden="true" />}
                 />
@@ -489,9 +510,10 @@ export function RemisionForm() {
                     label="Ubicación de origen"
                     endpoint="/api/ubicaciones/municipios"
                     getLabel={(item) => String(item.presentacion ?? item.nombre)}
+                    copiar={textoUbicacion}
                     value={field.value}
                     onChange={field.onChange}
-                    disabled={bloqueada}
+                    readOnly={bloqueada}
                     placeholder="Seleccionar origen"
                     icon={<MapPin size={16} aria-hidden="true" />}
                     required
@@ -509,9 +531,10 @@ export function RemisionForm() {
                     label="Ubicación de destino"
                     endpoint="/api/ubicaciones/municipios"
                     getLabel={(item) => String(item.presentacion ?? item.nombre)}
+                    copiar={textoUbicacion}
                     value={field.value}
                     onChange={field.onChange}
-                    disabled={bloqueada}
+                    readOnly={bloqueada}
                     placeholder="Seleccionar destino"
                     icon={<MapPin size={16} aria-hidden="true" />}
                     required
@@ -531,7 +554,7 @@ export function RemisionForm() {
                   getLabel={(item) => String(item.nombre)}
                   value={field.value}
                   onChange={field.onChange}
-                  disabled={bloqueada}
+                  readOnly={bloqueada}
                   placeholder="Buscar conductor"
                   icon={<User size={16} aria-hidden="true" />}
                 />
@@ -549,7 +572,7 @@ export function RemisionForm() {
                   getLabel={(item) => String(item.placa)}
                   value={field.value}
                   onChange={field.onChange}
-                  disabled={bloqueada}
+                  readOnly={bloqueada}
                   placeholder="Buscar por placa"
                   icon={<Truck size={16} aria-hidden="true" />}
                 />
@@ -559,7 +582,7 @@ export function RemisionForm() {
             <Input
               label="Hora de salida"
               type="time"
-              disabled={bloqueada}
+              readOnly={bloqueada}
               leftElement={<Clock size={16} aria-hidden="true" />}
               {...register("hora_salida")}
             />
@@ -567,7 +590,7 @@ export function RemisionForm() {
             <Input
               label="Hora de llegada"
               type="time"
-              disabled={bloqueada}
+              readOnly={bloqueada}
               leftElement={<Clock size={16} aria-hidden="true" />}
               {...register("hora_llegada")}
             />
@@ -585,7 +608,7 @@ export function RemisionForm() {
                     field.onChange(value);
                     setValue("tramo_id", null);
                   }}
-                  disabled={bloqueada}
+                  readOnly={bloqueada}
                   placeholder="Seleccionar"
                   icon={<Route size={16} aria-hidden="true" />}
                 />
@@ -603,28 +626,36 @@ export function RemisionForm() {
                   getLabel={(item) => String(item.nombre)}
                   value={field.value}
                   onChange={field.onChange}
-                  disabled={bloqueada || !proyectoId}
+                  readOnly={bloqueada}
+                  disabled={!bloqueada && !proyectoId}
                   placeholder={proyectoId ? "Seleccionar tramo" : "Elige un proyecto"}
                   icon={<Route size={16} aria-hidden="true" />}
                 />
               )}
             />
 
-            <Input
-              label="Kilómetros"
-              type="number"
-              step="0.001"
-              disabled={bloqueada}
-              leftElement={<Gauge size={16} aria-hidden="true" />}
-              rightElement={<span style={{ fontSize: 12, color: "var(--text-secondary)" }}>km</span>}
-              {...register("kilometros")}
+            <Controller
+              control={control}
+              name="kilometros"
+              render={({ field }) => (
+                <InputNumero
+                  label="Kilómetros"
+                  readOnly={bloqueada}
+                  leftElement={<Gauge size={16} aria-hidden="true" />}
+                  rightElement={<span style={{ fontSize: 12, color: "var(--text-secondary)" }}>km</span>}
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                />
+              )}
             />
 
             <Input
               label="Remisión AGRESUR"
               maxLength={30}
               placeholder="Opcional"
-              disabled={bloqueada}
+              readOnly={bloqueada}
               leftElement={<FileText size={16} aria-hidden="true" />}
               {...register("remision_agresur")}
             />
@@ -641,7 +672,7 @@ export function RemisionForm() {
                     getLabel={(item) => String(item.placa)}
                     value={field.value}
                     onChange={field.onChange}
-                    disabled={bloqueada}
+                    readOnly={bloqueada}
                     placeholder="Buscar por placa"
                     icon={<Truck size={16} aria-hidden="true" />}
                     required
@@ -655,7 +686,7 @@ export function RemisionForm() {
               <textarea
                 id="remision-observaciones"
                 rows={2}
-                disabled={bloqueada}
+                readOnly={bloqueada}
                 placeholder="Notas que aparecerán en la remisión impresa…"
                 className={formStyles.textarea}
                 {...register("observaciones")}
@@ -666,8 +697,45 @@ export function RemisionForm() {
       )}
 
       {tab === "productos" && isEditing && remisionId != null && remision && (
-        <ProductosSection remisionId={remisionId} productos={remision.productos} bloqueada={bloqueada} puedeEscribir={puedeEscribir} />
+        <ProductosSection
+          remisionId={remisionId}
+          productos={remision.productos}
+          bloqueada={bloqueada}
+          puedeEscribir={puedeEscribir}
+          tieneCamabaja={remision.camabaja_id != null}
+        />
       )}
+      <Modal
+        open={confirmarQuitarCamabaja != null}
+        onClose={() => setConfirmarQuitarCamabaja(null)}
+        title="Quitar la cama baja"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmarQuitarCamabaja(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              loading={actualizarMutation.isPending}
+              onClick={() => {
+                if (confirmarQuitarCamabaja) {
+                  actualizarMutation.mutate({ ...confirmarQuitarCamabaja, limpiar_valor_camabaja: true });
+                }
+                setConfirmarQuitarCamabaja(null);
+              }}
+            >
+              Quitar y limpiar valor
+            </Button>
+          </>
+        }
+      >
+        <p style={{ margin: 0 }}>
+          {productosConValorCamabaja} producto(s) de esta remisión tienen valor de cama baja. Si quitas la cama
+          baja, ese valor queda en 0. ¿Continuar?
+        </p>
+      </Modal>
+
       {tab === "facturacion" && isEditing && remisionId != null && (
         <FacturacionPanel remisionId={remisionId} puedeEscribir={puedeEscribir} />
       )}

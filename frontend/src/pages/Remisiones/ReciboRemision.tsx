@@ -1,6 +1,8 @@
 import type { Empresa } from "../../api/empresa";
 import type { RemisionDetalle } from "../../api/remisiones";
 import logo from "../../assets/Logo_Transportes.png";
+import { formatCantidad, formatUnidad } from "../../lib/format";
+import { formatNumeroRemision } from "../../lib/formatNumeroRemision";
 import styles from "./ReciboRemision.module.css";
 
 export interface ReciboRemisionProps {
@@ -106,7 +108,7 @@ export function ReciboRemision({
 
       <div className={styles.filaRemision}>
         <span className={styles.label}>Remision</span>
-        <span className={styles.numero}>{remision.numero_remision}</span>
+        <span className={styles.numero}>{formatNumeroRemision(remision.numero_remision)}</span>
         <span className={styles.label}>Fecha</span>
         <span className={styles.valor}>{remision.fecha}</span>
       </div>
@@ -127,9 +129,10 @@ export function ReciboRemision({
 
       <FilaDoble
         label1="Kilometros"
-        value1={remision.kilometros ?? ""}
+        value1={formatCantidad(remision.kilometros)}
         label2="Vehiculo"
-        value2={remision.vehiculo_placa ?? ""}
+        // Como la hoja "Imprimir": vehículo y, al lado, la cama baja si hay.
+        value2={[remision.vehiculo_placa, remision.camabaja_placa].filter(Boolean).join("   ")}
         align1="center"
         align2="center"
       />
@@ -155,9 +158,9 @@ export function ReciboRemision({
           />
           <FilaDoble
             label1="Cantidad"
-            value1={productos[0]?.cantidad ?? ""}
+            value1={formatCantidad(productos[0]?.cantidad)}
             label2="Unidad Medida"
-            value2={productos[0]?.unidad_medida_nombre ?? ""}
+            value2={formatUnidad(productos[0]?.unidad_medida_nombre)}
             align1="center"
           />
         </>
@@ -176,8 +179,8 @@ export function ReciboRemision({
               <tr key={p.id}>
                 <td>{tipoServicioNombre ?? ""}</td>
                 <td>{p.producto_nombre ?? ""}</td>
-                <td>{p.cantidad}</td>
-                <td>{p.unidad_medida_nombre ?? ""}</td>
+                <td>{formatCantidad(p.cantidad)}</td>
+                <td>{formatUnidad(p.unidad_medida_nombre)}</td>
               </tr>
             ))}
           </tbody>
@@ -188,11 +191,13 @@ export function ReciboRemision({
 
       <div className={styles.firmas}>
         <div className={styles.firma}>
-          <div className={styles.firmaLinea} />
+          {/* Sobre la línea: quien creó la remisión. Su CC No sale de
+              usuarios.identificacion; si no la tiene, queda en blanco. */}
+          <div className={styles.firmaLinea}>{remision.usuario_creador_nombre ?? ""}</div>
           <div className={styles.firmaCaption}>Vendedor</div>
           <div className={styles.firmaCampo}>
             <span className={styles.label}>CC No</span>
-            <span className={styles.valor} />
+            <span className={styles.valor}>{remision.usuario_creador_identificacion ?? ""}</span>
           </div>
         </div>
         <div className={styles.firma}>

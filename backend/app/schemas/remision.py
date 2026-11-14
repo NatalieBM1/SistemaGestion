@@ -44,6 +44,10 @@ class RemisionUpdate(BaseModel):
     hora_llegada: time | None = None
     remision_agresur: str | None = None
     observaciones: str | None = None
+    # Al quitar la cama baja con productos que tienen valor de cama baja:
+    # sin esto la API responde 409 pidiendo confirmación; con True, los
+    # pone en 0 (no es un campo de la remisión).
+    limpiar_valor_camabaja: bool = False
 
 
 class RemisionRead(BaseModel):
@@ -126,6 +130,12 @@ class ProductoRemisionRead(BaseModel):
 
 class RemisionDetalleRead(RemisionRead):
     productos: list[ProductoRemisionRead] = []
+    # Para el recibo impreso: "Vendedor" = quien creó la remisión, y su
+    # "CC No" = usuarios.identificacion (vacío si no la tiene).
+    usuario_creador_nombre: str | None = None
+    usuario_creador_identificacion: str | None = None
+    # Placa de la cama baja: el recibo la imprime junto al vehículo.
+    camabaja_placa: str | None = None
 
 
 class RemisionUpdateResponse(BaseModel):

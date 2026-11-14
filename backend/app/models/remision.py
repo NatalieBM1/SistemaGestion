@@ -1,6 +1,5 @@
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import CheckConstraint, Column, ForeignKey, Index, Numeric, Text
 from sqlmodel import Field, SQLModel
@@ -20,33 +19,33 @@ class Remision(SQLModel, table=True):
         Index("ix_remisiones_estado_facturacion", "estado_facturacion"),
     )
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     numero_remision: str = Field(unique=True)
     prefijo_id: int = Field(foreign_key="prefijos.id")
     consecutivo: str
-    orden_servicio_id: Optional[int] = Field(
+    orden_servicio_id: int | None = Field(
         default=None, foreign_key="ordenes_servicio.id"
     )
     fecha: date
-    forma_pago_id: Optional[int] = Field(default=None, foreign_key="formas_pago.id")
+    forma_pago_id: int | None = Field(default=None, foreign_key="formas_pago.id")
     cliente_id: int = Field(foreign_key="terceros.id")
-    conductor_id: Optional[int] = Field(default=None, foreign_key="terceros.id")
+    conductor_id: int | None = Field(default=None, foreign_key="terceros.id")
     origen_municipio_id: int = Field(foreign_key="municipios.id")
     destino_municipio_id: int = Field(foreign_key="municipios.id")
-    proyecto_id: Optional[int] = Field(default=None, foreign_key="proyectos.id")
-    tramo_id: Optional[int] = Field(default=None, foreign_key="tramos.id")
-    tipo_servicio_id: Optional[int] = Field(
+    proyecto_id: int | None = Field(default=None, foreign_key="proyectos.id")
+    tramo_id: int | None = Field(default=None, foreign_key="tramos.id")
+    tipo_servicio_id: int | None = Field(
         default=None, foreign_key="tipos_servicio.id"
     )
-    vehiculo_id: Optional[int] = Field(default=None, foreign_key="activos.id")
-    camabaja_id: Optional[int] = Field(default=None, foreign_key="activos.id")
-    kilometros: Optional[Decimal] = Field(
+    vehiculo_id: int | None = Field(default=None, foreign_key="activos.id")
+    camabaja_id: int | None = Field(default=None, foreign_key="activos.id")
+    kilometros: Decimal | None = Field(
         default=None, sa_column=Column(Numeric(12, 3), nullable=True)
     )
-    hora_salida: Optional[time] = Field(default=None)
-    hora_llegada: Optional[time] = Field(default=None)
-    remision_agresur: Optional[str] = Field(default=None)
-    observaciones: Optional[str] = Field(default=None, sa_column=Column(Text))
+    hora_salida: time | None = Field(default=None)
+    hora_llegada: time | None = Field(default=None)
+    remision_agresur: str | None = Field(default=None)
+    observaciones: str | None = Field(default=None, sa_column=Column(Text))
     usuario_creador_id: int = Field(foreign_key="usuarios.id")
     estado_facturacion: str = Field(default="NO_FACTURADA")
     creado_en: datetime = Field(default_factory=ahora_utc)
@@ -60,7 +59,7 @@ class RemisionProducto(SQLModel, table=True):
     __tablename__ = "remision_productos"
     __table_args__ = (Index("ix_remision_productos_remision_id", "remision_id"),)
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     remision_id: int = Field(
         sa_column=Column(
             ForeignKey("remisiones.id", ondelete="CASCADE"), nullable=False
@@ -68,7 +67,7 @@ class RemisionProducto(SQLModel, table=True):
     )
     producto_id: int = Field(foreign_key="productos.id")
     cantidad: Decimal = Field(sa_column=Column(Numeric(12, 3), nullable=False))
-    unidad_medida_id: Optional[int] = Field(
+    unidad_medida_id: int | None = Field(
         default=None, foreign_key="unidades_medida.id"
     )
     valor_material: Decimal = Field(

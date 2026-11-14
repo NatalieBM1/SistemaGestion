@@ -20,4 +20,7 @@ EXPOSE 8000
 # usuarios y el límite de intentos (app/core/rate_limit.py) los bloquearía
 # entre sí. Con esto uvicorn toma la IP real de X-Forwarded-For. '*' es
 # seguro aquí porque el contenedor solo recibe tráfico a través del proxy.
-CMD alembic upgrade head && python -m app.seed_auth && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'
+# --no-access-log: el log de accesos de uvicorn imprime la URL completa (con
+# ?q=NOMBRE...); en su lugar app/core/registro_peticiones.py registra solo
+# método, plantilla de la ruta, estado y duración.
+CMD alembic upgrade head && python -m app.seed_auth && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*' --no-access-log

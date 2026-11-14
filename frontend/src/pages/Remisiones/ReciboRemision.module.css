@@ -175,6 +175,15 @@
   width: 100%;
   border-bottom: 1px solid #000000;
   height: 13px;
+  /* Nombre impreso sobre la línea (Vendedor), como en la hoja "Imprimir". */
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  font-size: 8.5px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .firmaCaption {

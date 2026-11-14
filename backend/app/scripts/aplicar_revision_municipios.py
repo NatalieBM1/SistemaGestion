@@ -39,7 +39,7 @@ def _normalizar(texto: str) -> str:
 
 def _respaldar(db_url: str) -> Path:
     RUTA_BACKUPS.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")  # noqa: DTZ005 — hora local para el nombre del respaldo
     destino = RUTA_BACKUPS / f"backup_{ts}_pre_revision_municipios.dump"
     # Usa pg_dump vía docker exec sobre el contenedor sistemagestion-db,
     # igual que el resto de respaldos de esta carga histórica.

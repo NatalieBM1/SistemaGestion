@@ -14,6 +14,7 @@ import {
   type Municipio,
 } from "../../api/ubicaciones";
 import {
+  BotonCopiar,
   Button,
   EmptyState,
   FormGrid,
@@ -163,6 +164,12 @@ export function ListadoUbicaciones() {
     onError: (error) => setMunicipioFormError(getApiErrorMessage(error, "No se pudo guardar el municipio.")),
   });
 
+  const elegirDepto = (d: Departamento) => {
+    setSelectedDepto(d);
+    setSearchMunicipio("");
+    setMunicipioPage(1);
+  };
+
   const columnaDane = <T extends { codigo_dane: string }>(): TableColumn<T> => ({
     key: "codigo_dane",
     header: "Código DANE",
@@ -177,18 +184,23 @@ export function ListadoUbicaciones() {
       header: "Departamento",
       sortField: "nombre",
       render: (d) => (
-        <button
-          type="button"
+        // role="button" en vez de <button>: el texto de un <button> no se
+        // puede seleccionar para copiarlo. Enter/Espacio igual lo eligen.
+        <span
+          role="button"
+          tabIndex={0}
           className={styles.selectorFila}
           aria-pressed={selectedDepto?.id === d.id}
-          onClick={() => {
-            setSelectedDepto(d);
-            setSearchMunicipio("");
-            setMunicipioPage(1);
+          onClick={() => elegirDepto(d)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              elegirDepto(d);
+            }
           }}
         >
           {d.nombre}
-        </button>
+        </span>
       ),
     },
     columnaDane<Departamento>(),
@@ -197,12 +209,15 @@ export function ListadoUbicaciones() {
       header: "Acciones",
       align: "right",
       render: (d) => (
-        <IconButton
-          label={puedeEscribir ? `Editar ${d.nombre}` : READ_ONLY_TITLE}
-          icon={<Pencil size={14} />}
-          onClick={() => openEditDepto(d)}
-          disabled={!puedeEscribir}
-        />
+        <div className={tableStyles.actionsCell}>
+          <BotonCopiar texto={d.nombre} que={`ubicación ${d.nombre}`} />
+          <IconButton
+            label={puedeEscribir ? `Editar ${d.nombre}` : READ_ONLY_TITLE}
+            icon={<Pencil size={14} />}
+            onClick={() => openEditDepto(d)}
+            disabled={!puedeEscribir}
+          />
+        </div>
       ),
     },
   ];
@@ -215,12 +230,20 @@ export function ListadoUbicaciones() {
       header: "Acciones",
       align: "right",
       render: (m) => (
-        <IconButton
-          label={puedeEscribir ? `Editar ${m.nombre}` : READ_ONLY_TITLE}
-          icon={<Pencil size={14} />}
-          onClick={() => openEditMunicipio(m)}
-          disabled={!puedeEscribir}
-        />
+        <div className={tableStyles.actionsCell}>
+          {/* "MUNICIPIO, DEPARTAMENTO": el sistema no guarda un nivel más
+              fino que el municipio, así que nombre y municipio son el mismo. */}
+          <BotonCopiar
+            texto={[m.nombre, m.departamento_nombre ?? selectedDepto?.nombre].filter(Boolean).join(", ")}
+            que={`ubicación ${m.nombre}`}
+          />
+          <IconButton
+            label={puedeEscribir ? `Editar ${m.nombre}` : READ_ONLY_TITLE}
+            icon={<Pencil size={14} />}
+            onClick={() => openEditMunicipio(m)}
+            disabled={!puedeEscribir}
+          />
+        </div>
       ),
     },
   ];

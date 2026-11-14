@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
@@ -11,6 +10,7 @@ from app.core.rate_limit import (
     manejar_limite_excedido,
     manejar_rate_limit_excedido,
 )
+from app.core.registro_peticiones import RegistroPeticionesMiddleware, configurar_log_peticiones
 from app.routers import (
     activos,
     admin,
@@ -55,6 +55,10 @@ app.add_middleware(
 # 2) Cabeceras de seguridad, lo más afuera: salen en todas las respuestas,
 #    incluidas las de CORS (preflight) y los 413/429.
 app.add_middleware(CabecerasSeguridadMiddleware, produccion=settings.es_produccion)
+# 3) Registro de peticiones, lo más afuera (mide todo): método, plantilla de
+#    la ruta, estado y duración; nunca parámetros ni datos de clientes.
+configurar_log_peticiones()
+app.add_middleware(RegistroPeticionesMiddleware)
 
 app.include_router(auth.router)
 app.include_router(catalogos.router)

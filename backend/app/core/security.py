@@ -1,6 +1,6 @@
 import hashlib
 import hmac
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from jose import JWTError, jwt
 from jose.exceptions import ExpiredSignatureError
@@ -53,7 +53,7 @@ def token_vigente(payload: dict, usuario) -> bool:
 
 def _crear_token(data: dict, expires_delta: timedelta, token_type: str) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + expires_delta
+    expire = datetime.now(UTC) + expires_delta
     to_encode.update({"exp": expire, "type": token_type})
     return jwt.encode(to_encode, settings.secret_key, algorithm=ALGORITHM)
 

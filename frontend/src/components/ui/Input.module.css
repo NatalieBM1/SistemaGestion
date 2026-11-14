@@ -80,6 +80,19 @@
   cursor: not-allowed;
 }
 
+/* Solo lectura: se ve como dato (no atenuado) y se puede seleccionar y
+   copiar; a diferencia de :disabled, que el navegador no deja seleccionar. */
+.input:read-only:not(:disabled) {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  cursor: text;
+}
+
+.input:read-only:not(:disabled):focus {
+  border-color: var(--border);
+  box-shadow: none;
+}
+
 .inputError {
   border-color: var(--danger);
 }

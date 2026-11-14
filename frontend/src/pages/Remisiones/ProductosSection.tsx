@@ -1,3 +1,4 @@
+import { formatCantidad, formatCOP, formatUnidad } from "../../lib/format";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -25,11 +26,15 @@ export function ProductosSection({
   productos,
   bloqueada,
   puedeEscribir,
+  tieneCamabaja,
 }: {
   remisionId: number;
   productos: RemisionProducto[];
   bloqueada: boolean;
   puedeEscribir: boolean;
+  /** Según la remisión guardada (camabaja_id). Sin cama baja, el valor de
+   * cama baja ni se muestra ni se envía (va 0); el backend también lo exige. */
+  tieneCamabaja: boolean;
 }) {
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -117,7 +122,7 @@ export function ProductosSection({
       unidad_medida_id: values.unidad_medida_id,
       valor_material: Number(values.valor_material),
       valor_flete: Number(values.valor_flete),
-      valor_camabaja: Number(values.valor_camabaja),
+      valor_camabaja: tieneCamabaja ? Number(values.valor_camabaja) : 0,
       numero_viajes: Number(values.numero_viajes),
       valor_comision: Number(values.valor_comision),
       valor_costo: Number(values.valor_costo),
@@ -159,12 +164,12 @@ export function ProductosSection({
               {productos.map((p) => (
                 <tr key={p.id}>
                   <td>{p.producto_nombre ?? p.producto_id}</td>
-                  <td className="font-mono-data">
-                    {p.cantidad} {p.unidad_medida_nombre ?? ""}
+                  <td className="cifras">
+                    {formatCantidad(p.cantidad)} {formatUnidad(p.unidad_medida_nombre)}
                   </td>
-                  <td className="font-mono-data">{p.valor_material}</td>
-                  <td className="font-mono-data">{p.valor_flete}</td>
-                  <td className="font-mono-data">{p.numero_viajes}</td>
+                  <td className="cifras">{formatCOP(p.valor_material)}</td>
+                  <td className="cifras">{formatCOP(p.valor_flete)}</td>
+                  <td className="cifras">{formatCantidad(p.numero_viajes)}</td>
                   <td className={tableStyles.alignRight}>
                     {!bloqueada && (
                       <div className={tableStyles.actionsCell}>
@@ -219,7 +224,7 @@ export function ProductosSection({
       >
         <form id="producto-form" onSubmit={onSubmit} className={styles.form} noValidate>
           {error && <div className={styles.formError}>{error}</div>}
-          <ProductoFormFields control={control} register={register} />
+          <ProductoFormFields control={control} register={register} conCamabaja={tieneCamabaja} />
         </form>
       </Modal>
     </div>

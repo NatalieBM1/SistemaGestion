@@ -52,7 +52,7 @@ export function ExcelUploader({ columnas, instrucciones, onUpload, disabled, onS
     <div>
       <div className={styles.confirmText} style={{ marginBottom: "var(--space-3)" }}>
         <strong>Columnas requeridas:</strong>{" "}
-        <span className="font-mono-data">{columnas.join(", ")}</span>
+        <span className="cifras">{columnas.join(", ")}</span>
         <div style={{ marginTop: "var(--space-2)" }}>{instrucciones}</div>
       </div>
 

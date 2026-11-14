@@ -2,7 +2,7 @@
 
 ``pg_engine`` es para las pruebas que necesitan Postgres con datos reales
 (reportes, comparaciones sobre las 1.000 remisiones): apunta a
-TEST_DATABASE_URL, que debe ser un CLON de la base (ver NOTAS_RETOMAR.md),
+TEST_DATABASE_URL, que debe ser un CLON de la base (ver docs/NOTAS_RETOMAR.md),
 nunca la base real. Sin esa variable, esas pruebas se saltan.
 
 ``client_api`` levanta la app contra una base SQLite en memoria (solo las

@@ -133,8 +133,12 @@ def test_reportes_usan_la_identificacion_cuando_existe(session_con_rollback):
     creador.identificacion = "0087491991"
     s.add(creador)
     s.flush()
+    from app.core import numero_remision as nr
+
+    # El reporte trae el número con la forma de la referencia (Bloque 5).
     remisiones_del_creador = {
-        r.numero_remision for r in s.exec(select(Remision).where(Remision.usuario_creador_id == creador_id)).all()
+        nr.para_reporte(r.numero_remision)
+        for r in s.exec(select(Remision).where(Remision.usuario_creador_id == creador_id)).all()
     }
 
     general = _filas(svc.generar_reporte_general(s, **FILTROS))

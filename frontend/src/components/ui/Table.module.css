@@ -64,10 +64,10 @@
 }
 
 .flechaOrden {
-  font-size: 9px;
   color: var(--accent);
-  width: 8px;
-  display: inline-block;
+  width: 12px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .table thead th.alignRight {
@@ -203,4 +203,17 @@
   .skeletonBar {
     animation: none;
   }
+}
+
+/* Texto de enlaces dentro de celdas: seleccionable con el mouse (por defecto
+   el navegador "arrastra" el enlace en vez de seleccionar su texto). */
+.table td a,
+.table td [role="button"] {
+  -webkit-user-drag: none;
+  user-select: text;
+}
+
+/* Columnas numéricas (alineadas a la derecha): cifras de ancho fijo. */
+.table td.alignRight {
+  font-variant-numeric: tabular-nums;
 }

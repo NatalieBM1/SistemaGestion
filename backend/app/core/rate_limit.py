@@ -11,7 +11,7 @@ sería la IP del proxy (todos los usuarios compartirían una sola IP y se
 bloquearían entre sí), por eso uvicorn se arranca con ``--proxy-headers
 --forwarded-allow-ips='*'``: así uvicorn reemplaza ``client.host`` por la IP
 real que viene en ``X-Forwarded-For``. Ver el comando exacto en el
-Dockerfile y en NOTAS_RETOMAR.md.
+Dockerfile y en docs/NOTAS_RETOMAR.md.
 
 Los contadores viven en memoria del proceso (``memory://``). Alcanza con un
 solo proceso de uvicorn, que es como corre hoy en Render; si algún día se

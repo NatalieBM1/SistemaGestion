@@ -46,6 +46,11 @@ from app.schemas.common import PaginatedResponse
 
 router = APIRouter(prefix="/api/catalogos")
 
+# Orden de las opciones en listas (pedido del cliente): estos primero, en
+# este orden; el resto alfabético. Se comparan sin mayúsculas ni tildes.
+PRIORIDAD_TIPOS_SERVICIO = ["TRANSPORTE", "DESALOJO", "MATERIA PRIMA"]
+PRIORIDAD_UNIDADES_MEDIDA = ["METRO CÚBICO"]
+
 router.include_router(
     build_simple_crud_router(
         model=Prefijo,
@@ -92,6 +97,7 @@ router.include_router(
         tag="tipos_servicio",
         unique_fields=["nombre"],
         search_field="nombre",
+        orden_prioridad=PRIORIDAD_TIPOS_SERVICIO,
         read_permission="catalogos.leer",
         create_permission="catalogos.crear",
         update_permission="catalogos.editar",
@@ -126,6 +132,7 @@ router.include_router(
         tag="unidades_medida",
         unique_fields=["nombre"],
         search_field="nombre",
+        orden_prioridad=PRIORIDAD_UNIDADES_MEDIDA,
         read_permission="catalogos.leer",
         create_permission="catalogos.crear",
         update_permission="catalogos.editar",

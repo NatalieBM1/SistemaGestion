@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp } from "lucide-react";
 import type { ReactNode, ThHTMLAttributes } from "react";
 import type { Ordenamiento } from "../../hooks/useOrdenamiento";
 import styles from "./Table.module.css";
@@ -22,7 +23,7 @@ export function ThOrdenable({ campo, children, ordenamiento, onOrdenar, ...thPro
       <button type="button" className={styles.thOrdenable} onClick={() => onOrdenar(campo)}>
         {children}
         <span className={styles.flechaOrden} aria-hidden="true">
-          {sentido === "asc" ? "▲" : sentido === "desc" ? "▼" : ""}
+          {sentido === "asc" ? <ArrowUp size={12} strokeWidth={2.5} /> : sentido === "desc" ? <ArrowDown size={12} strokeWidth={2.5} /> : null}
         </span>
       </button>
     </th>
