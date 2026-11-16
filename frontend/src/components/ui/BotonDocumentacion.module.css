@@ -1,0 +1,51 @@
+/* Botón con borde (outline) en el azul de acento, mismo alto que los demás. */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 38px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--text-body);
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.boton:hover {
+  background: var(--accent-tint);
+}
+
+.boton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+/* En móvil: solo el ícono (el texto queda para lectores de pantalla). */
+@media (max-width: 768px) {
+  .boton {
+    width: 38px;
+    padding: 0;
+  }
+
+  .texto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+@media print {
+  .boton {
+    display: none;
+  }
+}

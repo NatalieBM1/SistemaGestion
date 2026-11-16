@@ -69,9 +69,10 @@ class UsuarioRead(BaseModel):
 
     id: int
     nombre: str
-    email: str
+    email: str | None
     identificacion: str | None = None
     activo: bool
+    historico: bool = False
     creado_en: datetime
     actualizado_en: datetime
     roles: list[str] = []

@@ -13,6 +13,8 @@ class Tercero(SQLModel, table=True):
     nombre: str
     direccion: str | None = Field(default=None)
     municipio_id: int | None = Field(default=None, foreign_key="municipios.id")
+    # Texto original de la columna CIUDAD de la hoja Terceros.
+    ciudad: str | None = Field(default=None)
     email: str | None = Field(default=None)
     telefono: str | None = Field(default=None)
     regimen: str | None = Field(default=None)

@@ -166,3 +166,15 @@ def test_describir_espera():
     assert rate_limit._describir_espera(45) == "45 segundos"
     assert rate_limit._describir_espera(60) == "1 minuto"
     assert rate_limit._describir_espera(61) == "2 minutos"
+
+
+# ── Cambiar la propia contraseña: 5 por minuto por cuenta ────────────────────
+
+
+def test_cambiar_password_se_bloquea_al_pasar_el_limite(client_api):
+    token = _login(client_api, "prueba@example.com", PASSWORD_PRUEBA, "198.51.100.30").json()["access_token"]
+    auth = {"Authorization": f"Bearer {token}", **_ip("198.51.100.30")}
+    cuerpo = {"password_actual": "mala-clave", "nueva_password": "OtraClave789"}
+    for _ in range(5):
+        assert client_api.post("/api/auth/cambiar-password", json=cuerpo, headers=auth).status_code == 400
+    _assert_429(client_api.post("/api/auth/cambiar-password", json=cuerpo, headers=auth))

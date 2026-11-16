@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar, FileText, Pencil, Search, Upload } from "lucide-react";
+import { FileText, Pencil, Search, Upload } from "lucide-react";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { getApiErrorMessage } from "../../api/errors";
 import { actualizarFactura, listFacturas, type Factura } from "../../api/facturas";
@@ -11,6 +11,7 @@ import {
   FilterPanel,
   IconButton,
   Input,
+  InputFecha,
   Modal,
   PageHeader,
   SelectorFilasPorPagina,
@@ -27,6 +28,7 @@ import { formatCantidad, formatCOP } from "../../lib/format";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "../../components/CatalogoCRUD.module.css";
+import { AYUDA } from "../../ayuda/rutas";
 
 interface ActualizarFormValues {
   numero_factura_nuevo: string;
@@ -108,6 +110,7 @@ export function ListadoFacturas() {
 
   return (
     <PageHeader
+      ayuda={AYUDA.facturacion}
       title="Facturación"
       breadcrumb={["Operación", "Facturación"]}
       actions={
@@ -117,23 +120,19 @@ export function ListadoFacturas() {
       }
     >
       <FilterPanel>
-        <Input
+        <InputFecha
           label="Desde"
-          type="date"
-          leftElement={<Calendar size={16} aria-hidden="true" />}
           value={desde}
-          onChange={(e) => {
-            setDesde(e.target.value);
+          onChange={(v) => {
+            setDesde(v);
             setPage(1);
           }}
         />
-        <Input
+        <InputFecha
           label="Hasta"
-          type="date"
-          leftElement={<Calendar size={16} aria-hidden="true" />}
           value={hasta}
-          onChange={(e) => {
-            setHasta(e.target.value);
+          onChange={(v) => {
+            setHasta(v);
             setPage(1);
           }}
         />
@@ -220,6 +219,7 @@ function ActualizarFacturaModal({ factura, onClose }: { factura: Factura | null;
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<ActualizarFormValues>({ defaultValues: { numero_factura_nuevo: "", fecha_factura_nueva: "" } });
 
@@ -288,12 +288,19 @@ function ActualizarFacturaModal({ factura, onClose }: { factura: Factura | null;
           error={errors.numero_factura_nuevo?.message}
           {...register("numero_factura_nuevo")}
         />
-        <Input
-          label="Nueva fecha de factura"
-          type="date"
-          hint="Déjalo vacío para no cambiarla."
-          leftElement={<Calendar size={16} aria-hidden="true" />}
-          {...register("fecha_factura_nueva")}
+        <Controller
+          control={control}
+          name="fecha_factura_nueva"
+          render={({ field }) => (
+            <InputFecha
+              label="Nueva fecha de factura"
+              hint="Déjalo vacío para no cambiarla."
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              ref={field.ref}
+            />
+          )}
         />
       </form>
     </Modal>

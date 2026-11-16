@@ -13,8 +13,10 @@ class OrdenServicio(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     numero: str = Field(unique=True)
     cliente_id: int = Field(foreign_key="terceros.id")
-    valor_tope: Decimal = Field(sa_column=Column(Numeric(14, 2), nullable=False))
-    saldo_disponible: Decimal = Field(
-        sa_column=Column(Numeric(14, 2), nullable=False)
+    # Opcionales: las ODS del Excel histórico solo traen el número. Sin
+    # valor_tope la orden no controla saldo.
+    valor_tope: Decimal | None = Field(default=None, sa_column=Column(Numeric(14, 2), nullable=True))
+    saldo_disponible: Decimal | None = Field(
+        default=None, sa_column=Column(Numeric(14, 2), nullable=True)
     )
     creado_en: datetime = Field(default_factory=ahora_utc)

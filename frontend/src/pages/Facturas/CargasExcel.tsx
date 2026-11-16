@@ -8,6 +8,7 @@ import { canWrite } from "../../lib/permissions";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "../../components/CatalogoCRUD.module.css";
+import { AYUDA } from "../../ayuda/rutas";
 
 type Tab = "facturar" | "eliminar" | "actualizar";
 
@@ -31,6 +32,7 @@ export function CargasExcel() {
 
   return (
     <PageHeader
+      ayuda={AYUDA.cargasExcel}
       title="Cargas por Excel"
       breadcrumb={["Operación", { label: "Volver a facturas", to: "/facturas" }]}
     >

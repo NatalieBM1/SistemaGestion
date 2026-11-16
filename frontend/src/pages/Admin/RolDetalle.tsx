@@ -13,6 +13,7 @@ import { Button, Checkbox, PageHeader, useToast } from "../../components/ui";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "../../components/CatalogoCRUD.module.css";
+import { AYUDA } from "../../ayuda/rutas";
 
 const PERMISO_ADMIN = "usuarios.administrar";
 
@@ -123,6 +124,7 @@ export function RolDetalle() {
 
   return (
     <PageHeader
+      ayuda={AYUDA.roles}
       title={rol?.nombre ?? "Rol"}
       subtitle="Marca los permisos que debe tener este rol, agrupados por módulo."
       breadcrumb={["Análisis", { label: "Administración", to: "/admin/usuarios" }, { label: "Roles", to: "/admin/roles" }]}

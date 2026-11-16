@@ -18,6 +18,7 @@ import {
   EmptyState,
   IconButton,
   Input,
+  InputFecha,
   Modal,
   PageHeader,
   Table,
@@ -30,6 +31,7 @@ import { formatCOP } from "../../lib/format";
 import { formatNumeroRemision } from "../../lib/formatNumeroRemision";
 import { usePageTitle } from "../../store/pageTitleStore";
 import tableStyles from "../../components/ui/Table.module.css";
+import { AYUDA } from "../../ayuda/rutas";
 
 function PendienteCell({ remisionId }: { remisionId: number }) {
   const { data, isLoading } = useQuery({
@@ -223,6 +225,7 @@ export function DetalleFactura() {
 
   return (
     <PageHeader
+      ayuda={AYUDA.detalleFactura}
       title={formatNumeroRemision(numeroFactura) || numeroFactura}
       breadcrumb={["Operación", "Facturación", numeroFactura]}
       subtitle="Detalle de la factura: remisiones asociadas y su estado."
@@ -359,10 +362,10 @@ export function DetalleFactura() {
             />
           </div>
           <div style={{ flex: "0 1 160px" }}>
-            <Input label="Desde" type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
+            <InputFecha label="Desde" value={desde} onChange={setDesde} />
           </div>
           <div style={{ flex: "0 1 160px" }}>
-            <Input label="Hasta" type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
+            <InputFecha label="Hasta" value={hasta} onChange={setHasta} />
           </div>
         </div>
 

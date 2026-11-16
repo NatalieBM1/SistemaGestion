@@ -8,9 +8,10 @@ import {
   guardarBlobComoArchivo,
   type ReporteFiltros,
 } from "../../api/reportes";
-import { AsyncSelect, Badge, Button, Input, PageHeader, Select, useToast } from "../../components/ui";
+import { AsyncSelect, Badge, Button, InputFecha, PageHeader, Select, useToast } from "../../components/ui";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "./Reportes.module.css";
+import { AYUDA } from "../../ayuda/rutas";
 
 function hoyISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -81,8 +82,8 @@ function ReporteCard({ titulo, descripcion, nombreArchivoBase, columnas, descarg
       <p className={styles.descripcion}>{descripcion}</p>
 
       <div className={styles.filtros}>
-        <Input label="Desde" type="date" value={filtros.desde} onChange={(e) => setFiltros((f) => ({ ...f, desde: e.target.value }))} />
-        <Input label="Hasta" type="date" value={filtros.hasta} onChange={(e) => setFiltros((f) => ({ ...f, hasta: e.target.value }))} />
+        <InputFecha label="Desde" value={filtros.desde} onChange={(v) => setFiltros((f) => ({ ...f, desde: v }))} />
+        <InputFecha label="Hasta" value={filtros.hasta} onChange={(v) => setFiltros((f) => ({ ...f, hasta: v }))} />
         <AsyncSelect
           label="Cliente"
           endpoint="/api/terceros"
@@ -142,6 +143,7 @@ export function Reportes() {
 
   return (
     <PageHeader
+      ayuda={AYUDA.reportes}
       title="Reportes"
       subtitle="Genera y descarga reportes en Excel del módulo de Remisiones, con filtros opcionales."
       breadcrumb={["Análisis", "Reportes"]}

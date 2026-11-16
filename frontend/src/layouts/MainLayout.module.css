@@ -139,8 +139,13 @@
 
 /* ── Tarjeta de usuario ────────────────────────────────────────────────────── */
 
-.userCard {
+.userMenuWrap {
+  position: relative;
   margin-top: 8px;
+}
+
+.userCard {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -149,10 +154,20 @@
   background: rgba(255, 255, 255, 0.10);
   border: 1px solid rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(4px);
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
   transition: background var(--transition-fast);
 }
 
-.userCard:hover { background: rgba(255, 255, 255, 0.13); }
+.userCard:hover,
+.userCard[aria-expanded="true"] { background: rgba(255, 255, 255, 0.16); }
+
+.userCard:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35);
+}
 
 .avatar {
   flex-shrink: 0;
@@ -190,29 +205,96 @@
   margin-top: 1px;
 }
 
-.logoutButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.userChevron {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  color: rgba(180, 200, 255, 0.85);
+  transform: rotate(180deg);
+  transition: transform var(--transition-fast);
+}
+
+.userChevronAbierto { transform: rotate(0deg); }
+
+/* Menú de la cuenta: se abre encima de la tarjeta. */
+.userMenu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 28px rgba(8, 17, 80, 0.30);
+}
+
+.userMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: rgba(180, 200, 255, 0.8);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-align: left;
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.logoutButton:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
-}
+.userMenuItem svg { color: var(--accent); }
 
-.logoutButton:focus-visible {
+.userMenuItem:hover,
+.userMenuItem:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+  background: var(--accent-tint);
+  color: var(--accent-deep);
+}
+
+/* Formulario "Cambiar contraseña" */
+.formCambio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.formCambioError {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  font-size: var(--text-body);
+}
+
+.formCambioNota {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.verClave {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.verClave:hover { color: var(--accent); }
+
+.verClave:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 /* ── Área principal ────────────────────────────────────────────────────────── */

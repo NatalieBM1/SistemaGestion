@@ -20,6 +20,7 @@ import {
   FilterPanel,
   IconButton,
   Input,
+  InputFecha,
   Modal,
   PageHeader,
   SelectorFilasPorPagina,
@@ -44,6 +45,7 @@ import { formatCOP } from "../../lib/format";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "../../components/CatalogoCRUD.module.css";
 import tableStyles from "../../components/ui/Table.module.css";
+import { AYUDA } from "../../ayuda/rutas";
 
 
 export function ListadoRemisiones() {
@@ -333,6 +335,7 @@ export function ListadoRemisiones() {
 
   return (
     <PageHeader
+      ayuda={AYUDA.remisiones}
       title="Remisiones"
       breadcrumb={["Operación", "Remisiones"]}
       subtitle="Consulta, crea y da seguimiento a las remisiones."
@@ -450,21 +453,19 @@ export function ListadoRemisiones() {
             setPage(1);
           }}
         />
-        <Input
+        <InputFecha
           label="Desde"
-          type="date"
           value={desde}
-          onChange={(e) => {
-            setDesde(e.target.value);
+          onChange={(v) => {
+            setDesde(v);
             setPage(1);
           }}
         />
-        <Input
+        <InputFecha
           label="Hasta"
-          type="date"
           value={hasta}
-          onChange={(e) => {
-            setHasta(e.target.value);
+          onChange={(v) => {
+            setHasta(v);
             setPage(1);
           }}
         />
@@ -634,11 +635,10 @@ export function ListadoRemisiones() {
                 value={numeroFacturaMultiple}
                 onChange={(e) => setNumeroFacturaMultiple(e.target.value)}
               />
-              <Input
+              <InputFecha
                 label="Fecha de factura"
-                type="date"
                 value={fechaFacturaMultiple}
-                onChange={(e) => setFechaFacturaMultiple(e.target.value)}
+                onChange={setFechaFacturaMultiple}
               />
             </div>
           </>

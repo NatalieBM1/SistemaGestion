@@ -72,8 +72,8 @@ class ActivoRead(BaseModel):
     id: int
     placa: str
     tipo_activo: str
-    clase: str
-    empresa_id: int
+    clase: str | None
+    empresa_id: int | None
     empresa_nombre: str | None = None
     es_segunda_mano: bool
     bloqueado: bool

@@ -33,6 +33,7 @@ capturas/
 *.sql.gz
 backend/app/data_import/backups/
 backend/app/data_import/*.xlsm
+*.xlsm
 backend/app/data_import/*.csv
 backend/app/data_import/*.xlsx
 
@@ -53,3 +54,6 @@ tmp_*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Scripts de desarrollo (no son código de producción)
+frontend/scripts/

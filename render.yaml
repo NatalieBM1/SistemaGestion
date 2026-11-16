@@ -1,17 +1,25 @@
 services:
   # ──────────────────────────────────────────────────────────────────────────
-  # Backend — FastAPI
+  # Backend — FastAPI (Docker). Plan pago: no se duerme por inactividad.
+  # El CMD del Dockerfile corre: alembic upgrade head → app.seed_auth →
+  # uvicorn --proxy-headers (escucha en el puerto 8000).
   # ──────────────────────────────────────────────────────────────────────────
   - type: web
     name: sistemagestion-api
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    plan: free
+    plan: starter            # $7/mes
+    healthCheckPath: /health
     envVars:
+      # Puerto en el que escucha uvicorn (CMD del Dockerfile). Render enruta
+      # el tráfico y el health check a este puerto.
+      - key: PORT
+        value: "8000"
       # Oculta /docs, /redoc y /openapi.json y activa HSTS.
       - key: APP_ENV
         value: production
+      # Cadena de conexión de la base de este mismo blueprint (red interna).
       - key: DATABASE_URL
         fromDatabase:
           name: sistemagestion-db
@@ -19,29 +27,43 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: ADMIN_INITIAL_PASSWORD
-        sync: false   # fijar manualmente en el dashboard antes del primer deploy
+        sync: false            # fijar en el dashboard antes del primer deploy
       - key: CORS_ORIGINS
         value: https://sistemagestion-web.onrender.com
+      # Correo para la recuperación de contraseña (Gmail con contraseña de
+      # aplicación). Sin SMTP_PASSWORD la recuperación responde "no disponible".
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        value: sistemastransportesguerreros@gmail.com
+      - key: SMTP_PASSWORD
+        sync: false            # contraseña de aplicación de Gmail (16 caracteres)
+      - key: SMTP_FROM_NAME
+        value: Transportes Guerreros
+      - key: SMTP_FROM_EMAIL
+        value: sistemastransportesguerreros@gmail.com
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Frontend — React + Vite (Static Site)
+  # Frontend — React + Vite (Static Site; sin costo de plan)
   # ──────────────────────────────────────────────────────────────────────────
   - type: web
     name: sistemagestion-web
     runtime: static
+    rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
-    rootDir: frontend
     envVars:
       - key: VITE_API_URL
         value: https://sistemagestion-api.onrender.com
     routes:
+      # SPA: cualquier ruta (/remisiones, /ayuda/...) la resuelve React Router.
       - type: rewrite
         source: /*
         destination: /index.html
-    # Cabeceras de seguridad del frontend. Render no lee archivos _headers:
-    # se configuran aquí (o, si el servicio no se creó desde este blueprint,
-    # en el panel: Settings → Headers, con los mismos valores).
+    # Cabeceras de seguridad. Render no lee archivos _headers: van aquí (si el
+    # servicio no se creó desde este blueprint, en Settings → Headers).
     headers:
       - path: /*
         name: Strict-Transport-Security
@@ -63,10 +85,18 @@ services:
         value: "0"
 
 # ──────────────────────────────────────────────────────────────────────────
-# Base de datos — PostgreSQL
+# Base de datos — PostgreSQL (plan pago)
 # ──────────────────────────────────────────────────────────────────────────
 databases:
   - name: sistemagestion-db
-    plan: free
+    # Render ya no ofrece el plan "starter" para PostgreSQL; su equivalente
+    # actual es basic-256mb (~$6/mes). Para más memoria: basic-1gb.
+    plan: basic-256mb
     databaseName: remisiones
     user: remisiones
+    # Una sola instancia (sin réplica en espera): suficiente para este uso.
+    highAvailability:
+      enabled: false
+    # Copias de seguridad: en los planes pagos Render las hace automáticamente
+    # (recuperación a un punto en el tiempo, PITR). No requieren configuración
+    # aquí; se restauran desde el dashboard → base de datos → Recovery.

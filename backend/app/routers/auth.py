@@ -11,7 +11,9 @@ from app.core.database import get_session
 from app.core.deps import get_current_active_user
 from app.core.fechas import ahora_utc
 from app.core.rate_limit import (
+    ALCANCE_CAMBIAR_PASSWORD,
     ALCANCE_USAR_CODIGO,
+    LIMITE_CAMBIAR_PASSWORD,
     LIMITE_LOGIN_CORREO,
     LIMITE_LOGIN_IP,
     LIMITE_SOLICITAR_CODIGO,
@@ -33,6 +35,7 @@ from app.core.security import (
 )
 from app.models.usuario import Permiso, Rol, RolPermiso, Usuario, UsuarioRol
 from app.schemas.auth import (
+    CambiarPasswordRequest,
     ForgotPasswordRequest,
     RefreshRequest,
     RefreshResponse,
@@ -152,6 +155,50 @@ def logout(usuario: Usuario = Depends(get_current_active_user)):
             "formas expira solo en 60 minutos."
         )
     }
+
+
+@router.post("/cambiar-password", response_model=TokenResponse)
+@limiter.limit(LIMITE_CAMBIAR_PASSWORD)
+def cambiar_password(
+    request: Request,
+    payload: CambiarPasswordRequest,
+    usuario: Usuario = Depends(get_current_active_user),
+    session: Session = Depends(get_session),
+):
+    """El usuario con sesión cambia su propia contraseña.
+
+    Exige la contraseña actual. Sube token_version para cerrar las sesiones
+    abiertas en otros equipos y devuelve tokens nuevos para que la sesión
+    desde la que se hizo el cambio siga abierta.
+    """
+    limitar_por_correo(LIMITE_CAMBIAR_PASSWORD, ALCANCE_CAMBIAR_PASSWORD, usuario.email)
+    if not verify_password(payload.password_actual, usuario.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La contraseña actual no es correcta.",
+        )
+    if len(payload.nueva_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="La nueva contraseña debe tener al menos 8 caracteres.",
+        )
+    if payload.nueva_password == payload.password_actual:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="La nueva contraseña debe ser diferente de la actual.",
+        )
+
+    usuario.password_hash = hash_password(payload.nueva_password)
+    usuario.token_version += 1
+    session.add(usuario)
+    session.commit()
+    session.refresh(usuario)
+
+    return TokenResponse(
+        access_token=create_access_token(datos_token(usuario)),
+        refresh_token=create_refresh_token(datos_token(usuario)),
+        usuario=_usuario_me(session, usuario),
+    )
 
 
 # ── Recuperación de contraseña por código de email ───────────────────────────

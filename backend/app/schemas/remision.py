@@ -115,15 +115,15 @@ class ProductoRemisionRead(BaseModel):
 
     id: int
     remision_id: int
-    producto_id: int
+    producto_id: int | None
     producto_nombre: str | None = None
-    cantidad: Decimal
+    cantidad: Decimal | None
     unidad_medida_id: int | None
     unidad_medida_nombre: str | None = None
     valor_material: Decimal
     valor_flete: Decimal
     valor_camabaja: Decimal
-    numero_viajes: int
+    numero_viajes: int | None
     valor_comision: Decimal
     valor_costo: Decimal
 

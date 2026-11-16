@@ -10,12 +10,15 @@ class Usuario(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     nombre: str
-    email: str = Field(unique=True)
+    # Vacío solo en usuarios históricos (creadores de remisiones del Excel):
+    # sin correo ni contraseña no pueden iniciar sesión.
+    email: str | None = Field(default=None, unique=True)
     # Cédula / identificación del usuario (opcional). Es lo que sale en
     # "ID del usuario" / "ID usuario" / "ID usuario factura" de los reportes.
     identificacion: str | None = Field(default=None, max_length=30)
-    password_hash: str
+    password_hash: str | None = Field(default=None)
     activo: bool = Field(default=True)
+    historico: bool = Field(default=False, sa_column_kwargs={"server_default": "false"})
     creado_en: datetime = Field(default_factory=ahora_utc)
     actualizado_en: datetime = Field(
         default_factory=ahora_utc,

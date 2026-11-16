@@ -206,6 +206,11 @@ def aplicar_delta_saldo_orden(
             detail=f"No se encontró la orden de servicio con id {orden_servicio_id}",
         )
 
+    # ODS histórica sin tope (el Excel solo trae su número): no hay saldo
+    # que controlar.
+    if orden.valor_tope is None or orden.saldo_disponible is None:
+        return None
+
     nuevo_saldo = orden.saldo_disponible - delta
     if nuevo_saldo < 0:
         raise HTTPException(
@@ -416,7 +421,7 @@ def _remision_read(
 
 
 def serializar_producto(session: Session, producto: RemisionProducto) -> ProductoRemisionRead:
-    prod = session.get(Producto, producto.producto_id)
+    prod = session.get(Producto, producto.producto_id) if producto.producto_id else None
     unidad = (
         session.get(UnidadMedida, producto.unidad_medida_id)
         if producto.unidad_medida_id

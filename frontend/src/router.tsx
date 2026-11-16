@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RequirePermission } from "./components/RequirePermission";
@@ -28,6 +29,9 @@ import { Roles } from "./pages/Admin/Roles";
 import { RolDetalle } from "./pages/Admin/RolDetalle";
 import { Dashboard } from "./pages/Dashboard/Dashboard";
 
+// Guía de usuario: bloque aparte, solo se descarga al abrir /ayuda.
+const Guia = lazy(() => import("./ayuda/Guia"));
+
 export function AppRouter() {
   return (
     <Routes>
@@ -36,6 +40,19 @@ export function AppRouter() {
 
       {/* Ruta de impresión: fuera de MainLayout a propósito (sin sidebar/
           header) para que @media print no tenga que pelear con ese CSS. */}
+      {/* Guía de usuario: para todos los roles con sesión iniciada; fuera de
+          MainLayout porque tiene su propio menú lateral. */}
+      <Route
+        path="/ayuda/*"
+        element={
+          <ProtectedRoute>
+            <Suspense fallback={<div style={{ padding: 32, color: "var(--text-secondary)" }}>Cargando la guía…</div>}>
+              <Guia />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/remisiones/:id/imprimir"
         element={

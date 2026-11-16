@@ -40,6 +40,10 @@ LIMITE_SOLICITAR_CODIGO = "3/hour"
 # fallidos por código, ver routers/auth.py).
 LIMITE_USAR_CODIGO = "10 per 15 minutes"
 ALCANCE_USAR_CODIGO = "codigo-recuperacion"
+# Cambiar la propia contraseña estando con sesión: frena a quien use una
+# sesión abierta ajena para adivinar la contraseña actual.
+LIMITE_CAMBIAR_PASSWORD = "5/minute"
+ALCANCE_CAMBIAR_PASSWORD = "cambiar-password"
 
 
 def ip_del_cliente(request: Request) -> str:

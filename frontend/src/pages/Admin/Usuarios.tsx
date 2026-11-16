@@ -36,6 +36,7 @@ import { useOrdenamiento } from "../../hooks/useOrdenamiento";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "../../components/CatalogoCRUD.module.css";
+import { AYUDA } from "../../ayuda/rutas";
 
 const PERMISO_ADMIN = "usuarios.administrar";
 
@@ -202,6 +203,7 @@ export function Usuarios() {
 
   return (
     <PageHeader
+      ayuda={AYUDA.usuarios}
       title="Usuarios"
       breadcrumb={["Análisis", "Administración"]}
       actions={

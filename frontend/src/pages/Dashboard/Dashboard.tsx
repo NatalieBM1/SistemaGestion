@@ -13,11 +13,12 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../api/client";
 import { listRemisiones } from "../../api/remisiones";
-import { Button } from "../../components/ui";
+import { Button, BotonDocumentacion } from "../../components/ui";
 import { formatCantidad, formatCOP } from "../../lib/format";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "./Dashboard.module.css";
+import { AYUDA } from "../../ayuda/rutas";
 
 const FORMATO_FECHA = new Intl.DateTimeFormat("es-CO", {
   weekday: "long",
@@ -177,13 +178,16 @@ export function Dashboard() {
             Resumen del sistema · actualizado en tiempo real
           </p>
         </div>
-        <Button
-          variant="primary"
-          leftIcon={<Plus size={16} />}
-          onClick={() => navigate("/remisiones/nueva")}
-        >
-          Nueva remisión
-        </Button>
+        <div className={styles.heroAcciones}>
+          <BotonDocumentacion destino={AYUDA.dashboard} />
+          <Button
+            variant="primary"
+            leftIcon={<Plus size={16} />}
+            onClick={() => navigate("/remisiones/nueva")}
+          >
+            Nueva remisión
+          </Button>
+        </div>
       </div>
 
       {/* KPIs */}

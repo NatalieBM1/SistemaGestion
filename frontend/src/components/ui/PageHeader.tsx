@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useOwnPageHeader } from "../../store/pageTitleStore";
+import { BotonDocumentacion } from "./BotonDocumentacion";
 import styles from "./PageHeader.module.css";
 
 export type BreadcrumbItem = string | { label: string; to: string };
@@ -10,10 +11,13 @@ interface PageHeaderProps {
   subtitle?: string;
   breadcrumb?: BreadcrumbItem[];
   actions?: ReactNode;
+  /** Ruta de la guía de usuario de esta pantalla: muestra el botón
+   * "Documentación" a la izquierda de las demás acciones. */
+  ayuda?: string;
   children?: ReactNode;
 }
 
-export function PageHeader({ title, subtitle, breadcrumb, actions, children }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, breadcrumb, actions, ayuda, children }: PageHeaderProps) {
   useOwnPageHeader();
   return (
     <div className={styles.root}>
@@ -38,7 +42,12 @@ export function PageHeader({ title, subtitle, breadcrumb, actions, children }: P
           <h1 className={styles.title}>{title}</h1>
           {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
         </div>
-        {actions && <div className={styles.actions}>{actions}</div>}
+        {(actions || ayuda) && (
+          <div className={styles.actions}>
+            {ayuda && <BotonDocumentacion destino={ayuda} />}
+            {actions}
+          </div>
+        )}
       </header>
       <div className={styles.glow} aria-hidden="true" />
       {children}

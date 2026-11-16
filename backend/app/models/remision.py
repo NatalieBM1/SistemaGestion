@@ -11,7 +11,7 @@ class Remision(SQLModel, table=True):
     __tablename__ = "remisiones"
     __table_args__ = (
         CheckConstraint(
-            "estado_facturacion IN ('NO_FACTURADA', 'FACTURADA_PARCIAL', 'FACTURADA')",
+            "estado_facturacion IN ('NO_FACTURADA', 'FACTURADA_PARCIAL', 'FACTURADA', 'NO_APLICA')",
             name="ck_remisiones_estado_facturacion",
         ),
         Index("ix_remisiones_fecha", "fecha"),
@@ -47,7 +47,11 @@ class Remision(SQLModel, table=True):
     remision_agresur: str | None = Field(default=None)
     observaciones: str | None = Field(default=None, sa_column=Column(Text))
     usuario_creador_id: int = Field(foreign_key="usuarios.id")
+    # NO_FACTURADA | FACTURADA_PARCIAL | FACTURADA | NO_APLICA ("No aplica
+    # facturación": no cuenta como pendiente ni se puede facturar).
     estado_facturacion: str = Field(default="NO_FACTURADA")
+    # Fecha y hora "IngRegistro" del Excel histórico (opcional).
+    ing_registro: datetime | None = Field(default=None)
     creado_en: datetime = Field(default_factory=ahora_utc)
     actualizado_en: datetime = Field(
         default_factory=ahora_utc,
@@ -65,8 +69,10 @@ class RemisionProducto(SQLModel, table=True):
             ForeignKey("remisiones.id", ondelete="CASCADE"), nullable=False
         )
     )
-    producto_id: int = Field(foreign_key="productos.id")
-    cantidad: Decimal = Field(sa_column=Column(Numeric(12, 3), nullable=False))
+    # Opcionales solo por el histórico: hay filas del Excel sin producto o
+    # sin cantidad. La app exige ambos al crear o editar un producto.
+    producto_id: int | None = Field(default=None, foreign_key="productos.id")
+    cantidad: Decimal | None = Field(default=None, sa_column=Column(Numeric(12, 3), nullable=True))
     unidad_medida_id: int | None = Field(
         default=None, foreign_key="unidades_medida.id"
     )
@@ -79,7 +85,8 @@ class RemisionProducto(SQLModel, table=True):
     valor_camabaja: Decimal = Field(
         default=0, sa_column=Column(Numeric(14, 2), nullable=False)
     )
-    numero_viajes: int = Field(default=1)
+    # Opcional solo por el histórico (filas del Excel sin número de viajes).
+    numero_viajes: int | None = Field(default=1)
     valor_comision: Decimal = Field(
         default=0, sa_column=Column(Numeric(14, 2), nullable=False)
     )

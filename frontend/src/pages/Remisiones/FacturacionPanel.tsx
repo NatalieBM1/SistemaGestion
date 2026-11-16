@@ -9,7 +9,7 @@ import {
   getHistorialFacturacion,
   getResumenFacturacion,
 } from "../../api/facturas";
-import { Badge, Button, Input, InputNumero, Modal, Select, useToast } from "../../components/ui";
+import { Badge, Button, Input, InputFecha, InputNumero, Modal, Select, useToast } from "../../components/ui";
 import { ESTADO_FACTURACION_LABEL, ESTADO_FACTURACION_VARIANT } from "../../lib/estadoFacturacion";
 import { formatCOP } from "../../lib/format";
 import styles from "../../components/CatalogoCRUD.module.css";
@@ -294,11 +294,21 @@ function FacturarModal({
           error={errors.numero_factura?.message}
           {...register("numero_factura", { required: "El número de factura es obligatorio." })}
         />
-        <Input
-          label="Fecha de factura"
-          type="date"
-          error={errors.fecha_factura?.message}
-          {...register("fecha_factura", { required: "La fecha es obligatoria." })}
+        <Controller
+          control={control}
+          name="fecha_factura"
+          rules={{ required: "La fecha es obligatoria." }}
+          render={({ field }) => (
+            <InputFecha
+              label="Fecha de factura"
+              required
+              error={errors.fecha_factura?.message}
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              ref={field.ref}
+            />
+          )}
         />
         <Select label="Tipo" {...register("tipo")}>
           <option value="TOTAL">Total</option>

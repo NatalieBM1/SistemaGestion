@@ -1,0 +1,169 @@
+/* Botón del calendario dentro del campo (a la derecha) */
+.botonCalendario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.botonCalendario:hover:not(:disabled) {
+  background: var(--accent-tint);
+}
+
+.botonCalendario:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.botonCalendario:disabled {
+  color: var(--text-disabled);
+  cursor: default;
+}
+
+/* Panel del calendario (va en document.body, por encima de los modales) */
+.panel {
+  position: fixed;
+  z-index: 1700;
+  width: 308px;
+  max-width: calc(100vw - 16px);
+  padding: 12px;
+  border-radius: var(--radius-md, 12px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 14px 36px rgba(13, 27, 110, 0.20);
+  font-family: var(--font-ui);
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.flecha {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.selector.selectorAnio {
+  flex: 0 0 74px;
+}
+
+.flecha:hover {
+  background: var(--accent-tint);
+}
+
+.selector {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 2px 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.flecha:focus-visible,
+.selector:focus-visible,
+.dia:focus-visible,
+.accion:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.mes {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.mes th {
+  padding: 4px 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.mes td {
+  padding: 1px;
+  text-align: center;
+}
+
+.dia {
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.dia:hover {
+  background: var(--accent-tint);
+  color: var(--accent-deep);
+}
+
+.diaHoy {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.diaElegido,
+.diaElegido:hover {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.pie {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.accion {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.accion:hover {
+  background: var(--accent-tint);
+}

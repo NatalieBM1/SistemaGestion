@@ -20,6 +20,7 @@ import {
   EmptyState,
   FilterPanel,
   Input,
+  InputFecha,
   Modal,
   PageHeader,
   Select,
@@ -37,6 +38,7 @@ import { canWrite } from "../../lib/permissions";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "../../components/CatalogoCRUD.module.css";
+import { AYUDA } from "../../ayuda/rutas";
 
 const READ_ONLY_TITLE = "No tienes permiso para esta acción (rol Solo Consulta)";
 const NOMBRE_TIPO_CONDUCTOR = "conductor";
@@ -240,6 +242,7 @@ export function ListadoTerceros() {
 
   return (
     <PageHeader
+      ayuda={AYUDA.terceros}
       title="Terceros"
       breadcrumb={["Datos", "Terceros"]}
       subtitle="Clientes, conductores, proveedores y demás terceros del sistema."
@@ -449,10 +452,18 @@ export function ListadoTerceros() {
                 )}
               />
               {tieneLicencia && (
-                <Input
-                  label="Fecha de vencimiento de la licencia"
-                  type="date"
-                  {...register("fecha_vencimiento_licencia")}
+                <Controller
+                  control={control}
+                  name="fecha_vencimiento_licencia"
+                  render={({ field }) => (
+                    <InputFecha
+                      label="Fecha de vencimiento de la licencia"
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                    />
+                  )}
                 />
               )}
             </>

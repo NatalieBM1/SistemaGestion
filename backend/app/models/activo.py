@@ -18,8 +18,9 @@ class Activo(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     placa: str = Field(unique=True)
     tipo_activo: str
-    clase: str
-    empresa_id: int = Field(foreign_key="empresas_grupo.id")
+    # Opcionales: el Excel histórico solo trae la placa.
+    clase: str | None = Field(default=None)
+    empresa_id: int | None = Field(default=None, foreign_key="empresas_grupo.id")
     es_segunda_mano: bool = Field(default=False)
     bloqueado: bool = Field(default=False)
     creado_en: datetime = Field(default_factory=ahora_utc)

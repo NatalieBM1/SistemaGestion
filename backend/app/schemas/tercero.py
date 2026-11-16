@@ -63,6 +63,7 @@ class TerceroRead(BaseModel):
     direccion: str | None
     municipio_id: int | None
     municipio_nombre: str | None = None
+    ciudad: str | None = None
     email: str | None
     telefono: str | None
     regimen: str | None

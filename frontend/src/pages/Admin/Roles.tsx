@@ -5,6 +5,7 @@ import { Button, EmptyState, PageHeader, Table, type TableColumn } from "../../c
 import { ordenarEnCliente, useOrdenamiento } from "../../hooks/useOrdenamiento";
 import { usePageTitle } from "../../store/pageTitleStore";
 import type { RolAdmin } from "../../api/admin";
+import { AYUDA } from "../../ayuda/rutas";
 
 interface RolConConteo extends RolAdmin {
   cantidadUsuarios: number;
@@ -55,7 +56,8 @@ export function Roles() {
   ];
 
   return (
-    <PageHeader title="Roles" subtitle="Haz clic en un rol para editar sus permisos." breadcrumb={["Análisis", "Administración", "Roles"]}>
+    <PageHeader
+      ayuda={AYUDA.roles} title="Roles" subtitle="Haz clic en un rol para editar sus permisos." breadcrumb={["Análisis", "Administración", "Roles"]}>
       {isError ? (
         <EmptyState
           title="No se pudo cargar"

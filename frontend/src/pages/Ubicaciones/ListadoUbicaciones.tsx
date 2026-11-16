@@ -37,6 +37,7 @@ import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
 import crudStyles from "../../components/CatalogoCRUD.module.css";
 import styles from "./Ubicaciones.module.css";
+import { AYUDA } from "../../ayuda/rutas";
 
 const READ_ONLY_TITLE = "No tienes permiso para esta acción (rol Solo Consulta)";
 
@@ -249,7 +250,8 @@ export function ListadoUbicaciones() {
   ];
 
   return (
-    <PageHeader title="Ubicaciones" breadcrumb={["Datos", "Ubicaciones"]}>
+    <PageHeader
+      ayuda={AYUDA.ubicaciones} title="Ubicaciones" breadcrumb={["Datos", "Ubicaciones"]}>
     <div className={styles.grid}>
       <div className={styles.panel}>
         <div className={styles.panelHeader}>

@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  Calendar,
   Clock,
   CreditCard,
   FileText,
@@ -23,7 +22,7 @@ import { apiClient } from "../../api/client";
 import { getApiErrorMessage } from "../../api/errors";
 import { createRemision, getRemision, updateRemision } from "../../api/remisiones";
 import { formatCOP } from "../../lib/format";
-import { AsyncSelect, BotonCopiar, Button, Input, InputNumero, Modal, PageHeader, type TabItem, TabsBar, useToast } from "../../components/ui";
+import { AsyncSelect, BotonCopiar, Button, Input, InputFecha, InputNumero, Modal, PageHeader, type TabItem, TabsBar, useToast } from "../../components/ui";
 import { normalizarTexto } from "../../lib/texto";
 import { canWrite } from "../../lib/permissions";
 import { useAuthStore } from "../../store/authStore";
@@ -33,6 +32,7 @@ import { FacturacionPanel } from "./FacturacionPanel";
 import { ProductosSection } from "./ProductosSection";
 import styles from "../../components/CatalogoCRUD.module.css";
 import formStyles from "./RemisionForm.module.css";
+import { ANCLAS_REMISION, AYUDA } from "../../ayuda/rutas";
 
 /** Texto que copia el botón junto a origen/destino: "MUNICIPIO, DEPARTAMENTO". */
 const textoUbicacion = (item: Record<string, unknown>) =>
@@ -257,7 +257,8 @@ export function RemisionForm() {
   if (isEditing && (errorRemision || (!cargandoRemision && !remision))) {
     return (
       <div className={formStyles.page}>
-        <PageHeader title="Remisión no encontrada" breadcrumb={["Operación", "Remisiones"]} />
+        <PageHeader
+      ayuda={`${AYUDA.remisionFormulario}#${ANCLAS_REMISION[tab] ?? ANCLAS_REMISION.datos}`} title="Remisión no encontrada" breadcrumb={["Operación", "Remisiones"]} />
         <div className={styles.formError} style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
           <AlertTriangle size={18} />
           <span>No encontramos esta remisión. Puede que haya sido eliminada o que el enlace esté incompleto.</span>
@@ -294,6 +295,7 @@ export function RemisionForm() {
   return (
     <div className={formStyles.page}>
       <PageHeader
+      ayuda={`${AYUDA.remisionFormulario}#${ANCLAS_REMISION[tab] ?? ANCLAS_REMISION.datos}`}
         title={isEditing ? "Editar remisión" : "Nueva remisión"}
         breadcrumb={breadcrumb}
         actions={
@@ -458,13 +460,22 @@ export function RemisionForm() {
               )}
             />
 
-            <Input
-              label="Fecha"
-              type="date"
-              readOnly={bloqueada}
-              error={errors.fecha?.message}
-              leftElement={<Calendar size={16} aria-hidden="true" />}
-              {...register("fecha", { required: "La fecha es obligatoria." })}
+            <Controller
+              control={control}
+              name="fecha"
+              rules={{ required: "La fecha es obligatoria." }}
+              render={({ field }) => (
+                <InputFecha
+                  label="Fecha"
+                  required
+                  readOnly={bloqueada}
+                  error={errors.fecha?.message}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                />
+              )}
             />
 
             <Controller

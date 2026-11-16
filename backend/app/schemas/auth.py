@@ -29,6 +29,11 @@ class ForgotPasswordRequest(BaseModel):
     email: str
 
 
+class CambiarPasswordRequest(BaseModel):
+    password_actual: str
+    nueva_password: str
+
+
 class ResetPasswordRequest(BaseModel):
     email: str
     codigo: str

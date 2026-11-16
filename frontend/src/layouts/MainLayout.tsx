@@ -1,4 +1,4 @@
-import { BarChart3, Car, LayoutDashboard, LayoutGrid, LogOut, Map, Menu, Receipt, ShieldCheck, Truck, Users, X } from "lucide-react";
+import { BarChart3, Car, LayoutDashboard, LayoutGrid, Map, Menu, Receipt, ShieldCheck, Truck, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import logo from "../assets/Logo_Transportes.png";
@@ -6,6 +6,7 @@ import { hasPermission } from "../lib/permissions";
 import { usePageTitleStore } from "../store/pageTitleStore";
 import { useAuthStore } from "../store/authStore";
 import { PieDerechos } from "../components/ui/PieDerechos";
+import { MenuUsuario } from "./MenuUsuario";
 import styles from "./MainLayout.module.css";
 
 interface NavItem {
@@ -53,13 +54,6 @@ export function MainLayout() {
     setDrawerOpen(false);
   };
 
-  const userInitials = (user?.nombre ?? "")
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
-
   const groups: { title: string; items: NavItem[] }[] = [
     { title: "Operación", items: [NAV_ITEMS[2], NAV_ITEMS[3]] },
     { title: "Datos", items: [NAV_ITEMS[1], NAV_ITEMS[4], NAV_ITEMS[5], NAV_ITEMS[6]] },
@@ -106,16 +100,7 @@ export function MainLayout() {
             </div>
           ))}
         </nav>
-        <div className={styles.userCard}>
-          <div className={styles.avatar} aria-hidden="true">{userInitials}</div>
-          <div className={styles.userText}>
-            <span className={styles.userName}>{user?.nombre}</span>
-            <span className={styles.userRole}>{user?.roles?.[0] ?? "Usuario"}</span>
-          </div>
-          <button type="button" className={styles.logoutButton} onClick={handleLogout} aria-label="Cerrar sesión" title="Cerrar sesión">
-            <LogOut size={16} />
-          </button>
-        </div>
+        <MenuUsuario onCerrarSesion={handleLogout} onAbrirVentana={() => setDrawerOpen(false)} />
       </aside>
 
       <div className={styles.main}>

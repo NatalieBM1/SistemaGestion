@@ -9,5 +9,5 @@ class OrdenServicioRead(BaseModel):
     id: int
     numero: str
     cliente_id: int
-    valor_tope: Decimal
-    saldo_disponible: Decimal
+    valor_tope: Decimal | None
+    saldo_disponible: Decimal | None

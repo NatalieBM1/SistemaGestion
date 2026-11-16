@@ -9,6 +9,12 @@
   margin-bottom: var(--space-6);
 }
 
+.heroAcciones {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .heroText {
   display: flex;
   flex-direction: column;

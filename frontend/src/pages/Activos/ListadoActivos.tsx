@@ -35,6 +35,7 @@ import { canWrite } from "../../lib/permissions";
 import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "../../components/CatalogoCRUD.module.css";
+import { AYUDA } from "../../ayuda/rutas";
 
 const READ_ONLY_TITLE = "No tienes permiso para esta acción (rol Solo Consulta)";
 
@@ -192,6 +193,7 @@ export function ListadoActivos() {
 
   return (
     <PageHeader
+      ayuda={AYUDA.activos}
       title="Activos"
       breadcrumb={["Datos", "Activos"]}
       actions={
