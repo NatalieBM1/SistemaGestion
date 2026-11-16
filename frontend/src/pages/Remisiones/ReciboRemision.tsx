@@ -96,7 +96,7 @@ export function ReciboRemision({
         <img src={logo} alt={empresa.nombre} className={styles.logo} />
         <div className={styles.empresaInfo}>
           <p className={styles.empresaLinea}>{empresa.nombre}</p>
-          <p className={styles.empresaLinea}>{empresa.nit}</p>
+          <p className={styles.empresaLinea}>{empresa.nit}-7</p>
           {empresa.direccion && <p className={styles.empresaLinea}>{empresa.direccion}</p>}
           {empresa.ciudad && <p className={styles.empresaLinea}>{empresa.ciudad}</p>}
           {empresa.email && <p className={styles.empresaLinea}>{empresa.email}</p>}

@@ -33,13 +33,20 @@ def obtener_empresa(session: Session = Depends(get_session)):
             ),
         )
     municipio = session.get(Municipio, tercero.municipio_id) if tercero.municipio_id else None
+    from app.models.ubicacion import Departamento
+    departamento = session.get(Departamento, municipio.departamento_id) if municipio else None
+    ciudad = None
+    if municipio:
+        ciudad = municipio.nombre
+        if departamento:
+            ciudad = f"{municipio.nombre} - {departamento.nombre}"
     return EmpresaRead(
         nombre=tercero.nombre,
         nit=tercero.identificacion,
         direccion=tercero.direccion or None,
         telefono=tercero.telefono or None,
         email=tercero.email or None,
-        ciudad=municipio.nombre if municipio else None,
+        ciudad=ciudad,
         responsabilidad_iva=tercero.regimen or None,
         resolucion_habilitacion=settings.empresa_resolucion_habilitacion,
     )
