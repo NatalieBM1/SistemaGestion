@@ -25,6 +25,16 @@ export const descargarReporteGeneral = (filtros: ReporteFiltros) =>
 export const descargarReporteFacturadas = (filtros: ReporteFiltros) =>
   descargarReporte("/api/reportes/remisiones-facturadas", filtros);
 
+/** Cierre anual: Resumen, Facturas y Detalle. base "factura" = por fecha de
+ * factura (cierre contable); "remision" = por fecha de la remisión. */
+export async function descargarCierreAnual(anio: number, base: "factura" | "remision"): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>("/api/reportes/cierre-anual", {
+    params: { anio, base },
+    responseType: "blob",
+  });
+  return data;
+}
+
 /** Dispara la descarga de un Blob en el navegador con el nombre dado. */
 export function guardarBlobComoArchivo(blob: Blob, nombreArchivo: string): void {
   const url = URL.createObjectURL(blob);

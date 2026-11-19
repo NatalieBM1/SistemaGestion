@@ -98,12 +98,12 @@ export function ProductosSection({
     setError(null);
     reset({
       producto_id: p.producto_id,
-      cantidad: p.cantidad,
+      cantidad: p.cantidad ?? "",
       unidad_medida_id: p.unidad_medida_id,
       valor_material: p.valor_material,
       valor_flete: p.valor_flete,
       valor_camabaja: p.valor_camabaja,
-      numero_viajes: String(p.numero_viajes),
+      numero_viajes: p.numero_viajes == null ? "" : String(p.numero_viajes),
       valor_comision: p.valor_comision,
       valor_costo: p.valor_costo,
     });
@@ -163,7 +163,7 @@ export function ProductosSection({
             <tbody>
               {productos.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.producto_nombre ?? p.producto_id}</td>
+                  <td>{p.producto_nombre ?? "—"}</td>
                   <td className="cifras">
                     {formatCantidad(p.cantidad)} {formatUnidad(p.unidad_medida_nombre)}
                   </td>

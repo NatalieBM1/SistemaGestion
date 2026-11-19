@@ -111,7 +111,7 @@ class Remision:
 @dataclass
 class Libro:
     lineas: list[Linea]
-    remisiones: "OrderedDict[tuple[str, int], Remision]"
+    remisiones: OrderedDict[tuple[str, int], Remision]
     filas_vacias: int
     filas_no_leidas: list[tuple[int, str]]
     terceros: list[dict[str, Any]]
@@ -142,7 +142,7 @@ def _leer_registros(ws) -> tuple[list[Linea], int, list[tuple[int, str]]]:
         if all(v is None or (isinstance(v, str) and not v.strip()) for v in valores):
             vacias += 1
             continue
-        v = dict(zip(COLUMNAS_REGISTROS, valores))
+        v = dict(zip(COLUMNAS_REGISTROS, valores, strict=True))
         clave_num = N.numero_remision(v["Numero de remision"])
         if clave_num is None:
             no_leidas.append((n, "número de remisión vacío o con formato no reconocido"))

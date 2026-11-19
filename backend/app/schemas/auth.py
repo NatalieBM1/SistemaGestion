@@ -7,6 +7,8 @@ class UsuarioMe(BaseModel):
     email: str
     roles: list[str]
     permisos: list[str] = []
+    # Si es True la app solo deja cambiar la contraseña o cerrar sesión.
+    debe_cambiar_password: bool = False
 
 
 class TokenResponse(BaseModel):

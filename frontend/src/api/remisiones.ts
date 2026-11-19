@@ -29,7 +29,7 @@ export interface Remision {
   remision_agresur: string | null;
   observaciones: string | null;
   usuario_creador_id: number;
-  estado_facturacion: "NO_FACTURADA" | "FACTURADA_PARCIAL" | "FACTURADA";
+  estado_facturacion: "NO_FACTURADA" | "FACTURADA_PARCIAL" | "FACTURADA" | "NO_APLICA";
   valor_total: string;
   creado_en: string;
   actualizado_en: string;
@@ -38,15 +38,16 @@ export interface Remision {
 export interface RemisionProducto {
   id: number;
   remision_id: number;
-  producto_id: number;
+  /** Vacíos solo en filas del histórico que no traían producto o cantidad. */
+  producto_id: number | null;
   producto_nombre: string | null;
-  cantidad: string;
+  cantidad: string | null;
   unidad_medida_id: number | null;
   unidad_medida_nombre: string | null;
   valor_material: string;
   valor_flete: string;
   valor_camabaja: string;
-  numero_viajes: number;
+  numero_viajes: number | null;
   valor_comision: string;
   valor_costo: string;
 }
@@ -64,6 +65,8 @@ export interface RemisionListParams {
   page_size?: number;
   desde?: string;
   hasta?: string;
+  anio?: number;
+  mes?: number;
   numero_remision?: string;
   estado_facturacion?: string;
   q?: string;

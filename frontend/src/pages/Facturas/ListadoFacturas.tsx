@@ -3,6 +3,7 @@ import { FileText, Pencil, Search, Upload } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
+import { apiClient } from "../../api/client";
 import { getApiErrorMessage } from "../../api/errors";
 import { actualizarFactura, listFacturas, type Factura } from "../../api/facturas";
 import {
@@ -15,6 +16,10 @@ import {
   Modal,
   PageHeader,
   SelectorFilasPorPagina,
+  Select,
+  AsyncSelect,
+  EstadoPunto,
+  FiltroAnioMes,
   Table,
   type TableColumn,
   guardarFilasPorPagina,
@@ -46,10 +51,15 @@ export function ListadoFacturas() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [numeroFactura, setNumeroFactura] = useState("");
+  const [anio, setAnio] = useState<number | null>(null);
+  const [mes, setMes] = useState<number | null>(null);
+  const [clienteId, setClienteId] = useState<number | null>(null);
+  const [serie, setSerie] = useState("");
+  const [estado, setEstado] = useState<"" | "ACTIVA" | "ANULADA">("");
   const [editTarget, setEditTarget] = useState<Factura | null>(null);
   const { ordenamiento, alternar: alternarOrden } = useOrdenamiento();
 
-  const queryKey = ["facturas", page, pageSize, desde, hasta, numeroFactura, ordenamiento];
+  const queryKey = ["facturas", page, pageSize, desde, hasta, numeroFactura, anio, mes, clienteId, serie, estado, ordenamiento];
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey,
     queryFn: () =>
@@ -59,9 +69,25 @@ export function ListadoFacturas() {
         desde: desde || undefined,
         hasta: hasta || undefined,
         numero_factura: numeroFactura || undefined,
+        anio: anio ?? undefined,
+        mes: mes ?? undefined,
+        cliente_id: clienteId ?? undefined,
+        serie: serie || undefined,
+        estado: estado || undefined,
         ordenar_por: ordenamiento.campo ?? undefined,
         sentido: ordenamiento.sentido ?? undefined,
       }),
+  });
+
+  // Series de factura del catálogo (F-7, F-203, L-201…).
+  const { data: series } = useQuery({
+    queryKey: ["series-factura"],
+    queryFn: async () => {
+      const { data: catalogo } = await apiClient.get<{ items: { codigo: string }[] }>("/api/catalogos/prefijos_factura", {
+        params: { page_size: 100 },
+      });
+      return catalogo.items.map((p) => p.codigo).sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
+    },
   });
 
   const items = data?.items ?? [];
@@ -80,6 +106,15 @@ export function ListadoFacturas() {
       ),
     },
     { key: "fecha_factura", header: "Fecha", sortField: "fecha_factura", render: (f) => f.fecha_factura },
+    { key: "cliente", header: "Cliente", truncate: true, render: (f) => f.cliente_nombre ?? "—" },
+    { key: "tipo", header: "Tipo", render: (f) => (f.tipo === "PARCIAL" ? "Parcial" : f.tipo === "TOTAL" ? "Total" : "—") },
+    {
+      key: "estado",
+      header: "Estado",
+      render: (f) => (
+        <EstadoPunto color={f.estado === "ACTIVA" ? "success" : "neutral"}>{f.estado === "ACTIVA" ? "Activa" : "Anulada"}</EstadoPunto>
+      ),
+    },
     {
       key: "cantidad_remisiones",
       header: "Remisiones",
@@ -136,6 +171,55 @@ export function ListadoFacturas() {
             setPage(1);
           }}
         />
+        <FiltroAnioMes
+          anio={anio}
+          mes={mes}
+          sufijo=" (fecha de factura)"
+          onChange={(a, m) => {
+            setAnio(a);
+            setMes(m);
+            setPage(1);
+          }}
+        />
+        <AsyncSelect
+          label="Cliente"
+          endpoint="/api/terceros"
+          params={{ tipo: "cliente" }}
+          getLabel={(item) => String(item.nombre)}
+          value={clienteId}
+          onChange={(id) => {
+            setClienteId(id);
+            setPage(1);
+          }}
+          placeholder="Todos"
+        />
+        <Select
+          label="Serie"
+          value={serie}
+          onChange={(e) => {
+            setSerie(e.target.value);
+            setPage(1);
+          }}
+        >
+          <option value="">Todas</option>
+          {(series ?? []).map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </Select>
+        <Select
+          label="Estado"
+          value={estado}
+          onChange={(e) => {
+            setEstado(e.target.value as "" | "ACTIVA" | "ANULADA");
+            setPage(1);
+          }}
+        >
+          <option value="">Todos</option>
+          <option value="ACTIVA">Activa</option>
+          <option value="ANULADA">Anulada</option>
+        </Select>
         <Input
           label="Número de factura"
           placeholder="Buscar…"

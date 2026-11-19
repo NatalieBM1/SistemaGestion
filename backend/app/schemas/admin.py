@@ -73,6 +73,7 @@ class UsuarioRead(BaseModel):
     identificacion: str | None = None
     activo: bool
     historico: bool = False
+    debe_cambiar_password: bool = False
     creado_en: datetime
     actualizado_en: datetime
     roles: list[str] = []
@@ -118,3 +119,15 @@ class AsignarRoles(BaseModel):
 
 class AsignarPermisos(BaseModel):
     permisos_ids: list[int]
+
+
+class ActivarHistoricoRequest(BaseModel):
+    identificacion: str
+    email: str
+    rol: str  # Administrador | Operador | Solo Consulta (o admin | operador | consulta)
+
+
+class ActivarHistoricoResponse(BaseModel):
+    usuario: UsuarioRead
+    # Se muestra UNA sola vez; no se guarda en claro en ningún lado.
+    password_temporal: str

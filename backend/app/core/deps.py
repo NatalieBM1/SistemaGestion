@@ -53,11 +53,30 @@ def get_current_user(
     return usuario
 
 
-def get_current_active_user(usuario: Usuario = Depends(get_current_user)) -> Usuario:
+MENSAJE_CAMBIO_PENDIENTE = "Debes cambiar tu contraseña antes de continuar."
+
+
+def get_current_active_user_con_cambio_pendiente(usuario: Usuario = Depends(get_current_user)) -> Usuario:
+    """Usuario activo, aunque tenga pendiente el cambio obligatorio de
+    contraseña. Solo para ver la sesión, cambiar la contraseña y cerrar
+    sesión."""
     if not usuario.activo:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="El usuario está inactivo",
+        )
+    return usuario
+
+
+def get_current_active_user(
+    usuario: Usuario = Depends(get_current_active_user_con_cambio_pendiente),
+) -> Usuario:
+    """Usuario activo y sin cambio de contraseña pendiente (todo lo demás)."""
+    if usuario.debe_cambiar_password:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=MENSAJE_CAMBIO_PENDIENTE,
+            headers={"X-Cambio-Password": "obligatorio"},
         )
     return usuario
 

@@ -5,8 +5,9 @@ export interface Activo {
   id: number;
   placa: string;
   tipo_activo: string;
-  clase: string;
-  empresa_id: number;
+  /** Vacíos en activos del histórico (el Excel solo trae la placa). */
+  clase: string | null;
+  empresa_id: number | null;
   empresa_nombre: string | null;
   es_segunda_mano: boolean;
   bloqueado: boolean;

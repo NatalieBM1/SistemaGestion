@@ -19,6 +19,9 @@ class Usuario(SQLModel, table=True):
     password_hash: str | None = Field(default=None)
     activo: bool = Field(default=True)
     historico: bool = Field(default=False, sa_column_kwargs={"server_default": "false"})
+    # Mientras esté en True solo puede ver su sesión, cambiar su contraseña o
+    # cerrar sesión (ver core/deps.py).
+    debe_cambiar_password: bool = Field(default=False, sa_column_kwargs={"server_default": "false"})
     creado_en: datetime = Field(default_factory=ahora_utc)
     actualizado_en: datetime = Field(
         default_factory=ahora_utc,

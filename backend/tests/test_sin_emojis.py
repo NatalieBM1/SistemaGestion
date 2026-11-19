@@ -36,10 +36,12 @@ def test_codigo_sin_emojis():
     assert hallados == []
 
 
-def test_excel_semilla_sin_emojis():
-    wb = openpyxl.load_workbook(RAIZ / "backend" / "app" / "seed_files" / "ejemplo_facturar_masivo.xlsx")
-    celdas = [
-        c.value for ws in wb for fila in ws.iter_rows() for c in fila
-        if isinstance(c.value, str) and EMOJI.search(c.value)
-    ]
+def test_excel_de_formato_sin_emojis():
+    celdas = []
+    for ruta in sorted((RAIZ / "backend" / "app" / "data_import" / "formatos").glob("*-programa_nuevo.xlsx")):
+        wb = openpyxl.load_workbook(ruta)
+        celdas += [
+            c.value for ws in wb for fila in ws.iter_rows() for c in fila
+            if isinstance(c.value, str) and EMOJI.search(c.value)
+        ]
     assert celdas == []

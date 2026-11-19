@@ -75,3 +75,27 @@ def reporte_remisiones_facturadas(
             "Content-Disposition": "attachment; filename=reporte_remisiones_facturadas.xlsx"
         },
     )
+
+
+@router.get(
+    "/cierre-anual",
+    dependencies=[Depends(require_permission("facturas.leer"))],
+)
+def reporte_cierre_anual(
+    anio: int = Query(..., ge=2000, le=2100),
+    base: str = Query("factura", pattern="^(factura|remision)$"),
+    session: Session = Depends(get_session),
+):
+    """Excel del cierre anual: Resumen, Facturas y Detalle (32 columnas del
+    reporte de facturadas). base=factura agrupa por fecha de factura (cierre
+    contable); base=remision, por fecha de la remisión.
+
+    Endpoint síncrono: FastAPI lo corre en un hilo aparte, así que generar
+    un año completo no bloquea al resto de la app."""
+    buffer = svc.generar_cierre_anual(session, anio=anio, base=base)
+    sufijo = "" if base == "factura" else "_por_fecha_remision"
+    return StreamingResponse(
+        buffer,
+        media_type=XLSX_MEDIA_TYPE,
+        headers={"Content-Disposition": f"attachment; filename=cierre_anual_{anio}{sufijo}.xlsx"},
+    )

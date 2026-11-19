@@ -8,6 +8,8 @@ export interface Tercero {
   direccion: string | null;
   municipio_id: number | null;
   municipio_nombre: string | null;
+  /** Texto original de CIUDAD (hoja Terceros del histórico). */
+  ciudad?: string | null;
   email: string | null;
   telefono: string | null;
   regimen: string | null;

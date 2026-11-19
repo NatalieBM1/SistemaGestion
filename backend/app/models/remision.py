@@ -86,7 +86,7 @@ class RemisionProducto(SQLModel, table=True):
         default=0, sa_column=Column(Numeric(14, 2), nullable=False)
     )
     # Opcional solo por el histórico (filas del Excel sin número de viajes).
-    numero_viajes: int | None = Field(default=1)
+    numero_viajes: int | None = Field(default=None)
     valor_comision: Decimal = Field(
         default=0, sa_column=Column(Numeric(14, 2), nullable=False)
     )

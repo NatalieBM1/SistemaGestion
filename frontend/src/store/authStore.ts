@@ -7,6 +7,8 @@ export interface AuthUser {
   email: string;
   roles: string[];
   permisos: string[];
+  /** Mientras sea true la app solo deja cambiar la contraseña o cerrar sesión. */
+  debe_cambiar_password?: boolean;
 }
 
 interface AuthState {
@@ -18,6 +20,7 @@ interface AuthState {
   setTokens: (accessToken: string, refreshToken: string) => void;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  actualizarUsuario: (parcial: Partial<AuthUser>) => void;
   loadUserFromMe: () => Promise<void>;
 }
 
@@ -75,6 +78,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         email: data.usuario.email,
         roles: data.usuario.roles,
         permisos: data.usuario.permisos ?? [],
+        debe_cambiar_password: Boolean(data.usuario.debe_cambiar_password),
       },
       isInitializing: false,
     });
@@ -83,6 +87,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: () => {
     writeStoredAuth(null);
     set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+  },
+
+  actualizarUsuario: (parcial) => {
+    const actual = get().user;
+    if (actual) set({ user: { ...actual, ...parcial } });
   },
 
   loadUserFromMe: async () => {

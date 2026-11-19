@@ -1,5 +1,12 @@
-"""Inserta el catálogo de permisos, los 3 roles base y el usuario administrador
-inicial. Idempotente: se puede correr varias veces sin duplicar ni fallar.
+"""Inserta el catálogo de permisos y los 3 roles base. Idempotente.
+
+Usuarios:
+- En desarrollo (APP_ENV=development) NO crea ningún usuario: de eso se
+  encarga app/scripts/setup_usuarios.py.
+- En producción crea solo el administrador inicial, una vez, con el correo y la
+  contraseña de ADMIN_INITIAL_EMAIL y ADMIN_INITIAL_PASSWORD, marcado para que
+  cambie la contraseña al primer ingreso. Si ya hay un administrador activo no
+  crea nada. Si no hay ninguno y faltan esas variables, termina con error.
 
 Uso: python -m app.seed_auth (desde backend/, con el venv activo)
 """
@@ -66,7 +73,6 @@ PERMISOS_SOLO_CONSULTA = [
     "facturas.leer",
 ]
 
-ADMIN_EMAIL = "admin@transportesguerrero.com"
 
 
 def _obtener_o_crear(session: Session, model, *, defaults: dict | None = None, **filtros):
@@ -109,30 +115,53 @@ def seed(session: Session) -> None:
         session, rol_consulta, [permisos_por_codigo[c] for c in PERMISOS_SOLO_CONSULTA]
     )
 
-    usuario_admin = _obtener_o_crear(
-        session,
-        Usuario,
-        email=ADMIN_EMAIL,
-        defaults={
-            "nombre": "Administrador del Sistema",
-            "password_hash": hash_password(settings.admin_initial_password),
-            "activo": True,
-        },
-    )
-    session.flush()
-    if session.get(UsuarioRol, (usuario_admin.id, rol_admin.id)) is None:
-        session.add(UsuarioRol(usuario_id=usuario_admin.id, rol_id=rol_admin.id))
-
     session.commit()
+    if settings.es_produccion:
+        _admin_inicial(session, rol_admin)
+
+
+def _hay_administrador_activo(session: Session, rol_admin: Rol) -> bool:
+    return (
+        session.exec(
+            select(Usuario.id)
+            .join(UsuarioRol, UsuarioRol.usuario_id == Usuario.id)
+            .where(UsuarioRol.rol_id == rol_admin.id, Usuario.activo.is_(True))
+        ).first()
+        is not None
+    )
+
+
+def _admin_inicial(session: Session, rol_admin: Rol) -> None:
+    if _hay_administrador_activo(session, rol_admin):
+        print("Ya hay un administrador activo: no se crea el administrador inicial.")
+        return
+    email = (settings.admin_initial_email or "").strip().lower()
+    password = settings.admin_initial_password or ""
+    if not email or len(password) < 12:
+        raise SystemExit(
+            "No hay ningún administrador. Define ADMIN_INITIAL_EMAIL y ADMIN_INITIAL_PASSWORD "
+            "(contraseña aleatoria de al menos 12 caracteres) para crear el administrador inicial."
+        )
+    usuario = session.exec(select(Usuario).where(Usuario.email == email)).first()
+    if usuario is None:
+        usuario = Usuario(nombre="ADMINISTRADOR", email=email)
+    usuario.password_hash = hash_password(password)
+    usuario.activo = True
+    usuario.debe_cambiar_password = True
+    session.add(usuario)
+    session.flush()
+    if session.get(UsuarioRol, (usuario.id, rol_admin.id)) is None:
+        session.add(UsuarioRol(usuario_id=usuario.id, rol_id=rol_admin.id))
+    session.commit()
+    print("Administrador inicial creado; deberá cambiar la contraseña al primer ingreso.")
 
 
 def main() -> None:
     with Session(engine) as session:
         seed(session)
-    print("Roles, permisos y usuario administrador insertados (o ya existentes).")
-    print(f"Usuario administrador: {ADMIN_EMAIL}")
-    print("Contraseña: la que hayas puesto en ADMIN_INITIAL_PASSWORD en tu .env.")
-    print("Si la cuenta ya existía, esta contraseña NO se tocó. Cámbiala desde la app si es nueva.")
+    print("Roles y permisos insertados (o ya existentes).")
+    if not settings.es_produccion:
+        print("Desarrollo: no se crean usuarios (usa python -m app.scripts.setup_usuarios).")
 
 
 if __name__ == "__main__":

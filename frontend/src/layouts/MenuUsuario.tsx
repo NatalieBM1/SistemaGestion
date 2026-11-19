@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { ChevronUp, Eye, EyeOff, KeyRound, LogOut } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { authApi } from "../api/auth";
 import { getApiErrorMessage } from "../api/errors";
@@ -116,15 +116,24 @@ interface ValoresCambio {
   confirmar: string;
 }
 
-function CambiarContrasenaModal({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
+/** Formulario de cambio de contraseña (contraseña actual, nueva y
+ * confirmación). Lo usan la ventana del menú de la cuenta y la pantalla de
+ * cambio obligatorio. `acciones` dibuja los botones (recibe si está guardando). */
+export function FormularioCambioContrasena({
+  onListo,
+  acciones,
+}: {
+  onListo: () => void;
+  acciones: (guardando: boolean) => ReactNode;
+}) {
   const toast = useToast();
   const setTokens = useAuthStore((s) => s.setTokens);
+  const actualizarUsuario = useAuthStore((s) => s.actualizarUsuario);
   const [error, setError] = useState<string | null>(null);
   const [ver, setVer] = useState(false);
   const {
     register,
     handleSubmit,
-    reset,
     getValues,
     formState: { errors },
   } = useForm<ValoresCambio>({ defaultValues: { actual: "", nueva: "", confirmar: "" } });
@@ -133,18 +142,12 @@ function CambiarContrasenaModal({ abierto, onCerrar }: { abierto: boolean; onCer
     mutationFn: (v: ValoresCambio) => authApi.cambiarPassword(v.actual, v.nueva),
     onSuccess: ({ data }) => {
       setTokens(data.access_token, data.refresh_token);
+      actualizarUsuario({ debe_cambiar_password: false });
       toast.success("Tu contraseña se actualizó. Las sesiones abiertas en otros equipos se cerraron.");
-      cerrar();
+      onListo();
     },
     onError: (err) => setError(getApiErrorMessage(err, "No se pudo cambiar la contraseña.")),
   });
-
-  const cerrar = () => {
-    setError(null);
-    setVer(false);
-    reset();
-    onCerrar();
-  };
 
   const ojo = (
     <button
@@ -160,73 +163,78 @@ function CambiarContrasenaModal({ abierto, onCerrar }: { abierto: boolean; onCer
   const tipo = ver ? "text" : "password";
 
   return (
-    <Modal
-      open={abierto}
-      onClose={cerrar}
-      title="Cambiar contraseña"
-      size="sm"
-      footer={
-        <>
-          <Button type="button" variant="ghost" onClick={cerrar}>
-            Cancelar
-          </Button>
-          <Button type="submit" form="cambiar-contrasena-form" variant="primary" loading={mutation.isPending}>
-            Guardar contraseña
-          </Button>
-        </>
-      }
+    <form
+      onSubmit={handleSubmit((v) => {
+        setError(null);
+        mutation.mutate(v);
+      })}
+      className={styles.formCambio}
+      noValidate
     >
-      <form
-        id="cambiar-contrasena-form"
-        onSubmit={handleSubmit((v) => {
-          setError(null);
-          mutation.mutate(v);
+      {error && (
+        <div className={styles.formCambioError} role="alert">
+          {error}
+        </div>
+      )}
+      <Input
+        label="Contraseña actual"
+        type={tipo}
+        autoComplete="current-password"
+        required
+        rightElement={ojo}
+        error={errors.actual?.message}
+        {...register("actual", { required: "Escribe tu contraseña actual." })}
+      />
+      <Input
+        label="Nueva contraseña"
+        type={tipo}
+        autoComplete="new-password"
+        required
+        hint="Mínimo 8 caracteres."
+        error={errors.nueva?.message}
+        {...register("nueva", {
+          required: "Escribe la nueva contraseña.",
+          minLength: { value: 8, message: "La nueva contraseña debe tener al menos 8 caracteres." },
+          validate: (v) => v !== getValues("actual") || "La nueva contraseña debe ser diferente de la actual.",
         })}
-        className={styles.formCambio}
-        noValidate
-      >
-        {error && (
-          <div className={styles.formCambioError} role="alert">
-            {error}
-          </div>
-        )}
-        <Input
-          label="Contraseña actual"
-          type={tipo}
-          autoComplete="current-password"
-          required
-          rightElement={ojo}
-          error={errors.actual?.message}
-          {...register("actual", { required: "Escribe tu contraseña actual." })}
+      />
+      <Input
+        label="Confirmar contraseña"
+        type={tipo}
+        autoComplete="new-password"
+        required
+        error={errors.confirmar?.message}
+        {...register("confirmar", {
+          required: "Repite la nueva contraseña.",
+          validate: (v) => v === getValues("nueva") || "Las contraseñas no coinciden.",
+        })}
+      />
+      <p className={styles.formCambioNota}>
+        Al guardar, se cierran las sesiones abiertas en otros equipos. En este equipo sigues trabajando.
+      </p>
+      <div className={styles.formCambioAcciones}>{acciones(mutation.isPending)}</div>
+    </form>
+  );
+}
+
+function CambiarContrasenaModal({ abierto, onCerrar }: { abierto: boolean; onCerrar: () => void }) {
+  return (
+    <Modal open={abierto} onClose={onCerrar} title="Cambiar contraseña" size="sm">
+      {abierto && (
+        <FormularioCambioContrasena
+          onListo={onCerrar}
+          acciones={(guardando) => (
+            <>
+              <Button type="button" variant="ghost" onClick={onCerrar}>
+                Cancelar
+              </Button>
+              <Button type="submit" variant="primary" loading={guardando}>
+                Guardar contraseña
+              </Button>
+            </>
+          )}
         />
-        <Input
-          label="Nueva contraseña"
-          type={tipo}
-          autoComplete="new-password"
-          required
-          hint="Mínimo 8 caracteres."
-          error={errors.nueva?.message}
-          {...register("nueva", {
-            required: "Escribe la nueva contraseña.",
-            minLength: { value: 8, message: "La nueva contraseña debe tener al menos 8 caracteres." },
-            validate: (v) => v !== getValues("actual") || "La nueva contraseña debe ser diferente de la actual.",
-          })}
-        />
-        <Input
-          label="Confirmar contraseña"
-          type={tipo}
-          autoComplete="new-password"
-          required
-          error={errors.confirmar?.message}
-          {...register("confirmar", {
-            required: "Repite la nueva contraseña.",
-            validate: (v) => v === getValues("nueva") || "Las contraseñas no coinciden.",
-          })}
-        />
-        <p className={styles.formCambioNota}>
-          Al guardar, se cierran las sesiones abiertas en otros equipos. En este equipo sigues trabajando.
-        </p>
-      </form>
+      )}
     </Modal>
   );
 }

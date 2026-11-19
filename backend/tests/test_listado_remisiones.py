@@ -15,6 +15,8 @@ PARAMS_POR_DEFECTO = {
     "page_size": 20,
     "desde": None,
     "hasta": None,
+    "anio": None,
+    "mes": None,
     "numero_remision": None,
     "numero_orden_servicio": None,
     "tercero_id": None,

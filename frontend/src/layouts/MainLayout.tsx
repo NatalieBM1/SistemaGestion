@@ -7,6 +7,7 @@ import { usePageTitleStore } from "../store/pageTitleStore";
 import { useAuthStore } from "../store/authStore";
 import { PieDerechos } from "../components/ui/PieDerechos";
 import { MenuUsuario } from "./MenuUsuario";
+import { CambioObligatorio } from "./CambioObligatorio";
 import styles from "./MainLayout.module.css";
 
 interface NavItem {
@@ -80,6 +81,10 @@ export function MainLayout() {
       </button>
     );
   };
+
+  if (user?.debe_cambiar_password) {
+    return <CambioObligatorio onCerrarSesion={handleLogout} />;
+  }
 
   return (
     <div className={styles.shell}>

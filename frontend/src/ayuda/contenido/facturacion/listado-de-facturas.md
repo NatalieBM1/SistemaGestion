@@ -18,7 +18,7 @@ Todos los roles pueden consultarla. **Actualizar factura** requiere el rol Admin
 
 :::pasos
 1. En el menú, en **Operación**, haz clic en **Facturación**.
-2. Si quieres, filtra con **Desde**, **Hasta** o **Número de factura**.
+2. Si quieres, filtra con **Desde**, **Hasta**, **Año** y **Mes** (de la fecha de factura), **Cliente**, **Serie** (F-7, F-203, L-201…), **Estado** (Activa o Anulada) o **Número de factura**. Los filtros se combinan.
 3. Haz clic en el número de una factura para ver su detalle.
 :::
 
@@ -30,6 +30,9 @@ Todos los roles pueden consultarla. **Actualizar factura** requiere el rol Admin
 |---|---|
 | **Número de factura** | Enlace al detalle de la factura. |
 | **Fecha** | Fecha de la factura. |
+| **Cliente** | Cliente de las remisiones de la factura. Si tiene remisiones de varios clientes dice «VARIOS CLIENTES (n)». |
+| **Tipo** | **Total** o **Parcial** (si alguna de sus facturaciones es parcial). |
+| **Estado** | **Activa**, o **Anulada** si todas sus facturaciones se anularon. |
 | **Remisiones** | Cuántas remisiones tiene la factura. |
 | **Valor total facturado** | Suma de las facturaciones activas de esa factura. |
 

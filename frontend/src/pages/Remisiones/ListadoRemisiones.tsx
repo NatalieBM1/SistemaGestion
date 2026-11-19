@@ -21,6 +21,7 @@ import {
   IconButton,
   Input,
   InputFecha,
+  FiltroAnioMes,
   Modal,
   PageHeader,
   SelectorFilasPorPagina,
@@ -31,16 +32,12 @@ import {
   rangoRegistros,
   useToast,
 } from "../../components/ui";
-import { ESTADO_FACTURACION_LABEL } from "../../lib/estadoFacturacion";
+import { ESTADO_FACTURACION_LABEL, ESTADO_FACTURACION_VARIANT, ESTADOS_FACTURACION, esFacturable } from "../../lib/estadoFacturacion";
 import { formatNumeroRemision } from "../../lib/formatNumeroRemision";
 import { useOrdenamiento } from "../../hooks/useOrdenamiento";
 import listStyles from "./ListadoRemisiones.module.css";
 
-const ESTADO_COLOR: Record<string, "neutral" | "warning" | "success"> = {
-  NO_FACTURADA: "neutral",
-  FACTURADA_PARCIAL: "warning",
-  FACTURADA: "success",
-};
+const ESTADO_COLOR = ESTADO_FACTURACION_VARIANT;
 import { formatCOP } from "../../lib/format";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "../../components/CatalogoCRUD.module.css";
@@ -57,6 +54,8 @@ export function ListadoRemisiones() {
   const [page, setPage] = useState(1);
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
+  const [anio, setAnio] = useState<number | null>(null);
+  const [mes, setMes] = useState<number | null>(null);
   const [q, setQ] = useState("");
   const [numeroRemision, setNumeroRemision] = useState("");
   const [placa, setPlaca] = useState("");
@@ -76,7 +75,7 @@ export function ListadoRemisiones() {
 
   const [pageSize, setPageSize] = useState(() => leerFilasPorPaginaGuardadas("remisiones", 20));
   const { ordenamiento, alternar: alternarOrden } = useOrdenamiento();
-  const filtros = { q, numeroRemision, placa, factura, proyectoId, desde, hasta, estado, clienteId, pageSize, ordenamiento };
+  const filtros = { q, numeroRemision, placa, factura, proyectoId, desde, hasta, anio, mes, estado, clienteId, pageSize, ordenamiento };
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["remisiones", page, filtros],
     queryFn: () =>
@@ -90,6 +89,8 @@ export function ListadoRemisiones() {
         proyecto_id: proyectoId ?? undefined,
         desde: desde || undefined,
         hasta: hasta || undefined,
+        anio: anio ?? undefined,
+        mes: mes ?? undefined,
         estado_facturacion: estado || undefined,
         tercero_id: clienteId ?? undefined,
         ordenar_por: ordenamiento.campo ?? undefined,
@@ -105,6 +106,8 @@ export function ListadoRemisiones() {
     setProyectoId(null);
     setDesde("");
     setHasta("");
+    setAnio(null);
+    setMes(null);
     setEstado("");
     setClienteId(null);
     setPage(1);
@@ -224,7 +227,7 @@ export function ListadoRemisiones() {
 
   const seleccionablesDeLaPagina = items.filter(
     (r) =>
-      r.estado_facturacion !== "FACTURADA" &&
+      esFacturable(r.estado_facturacion) &&
       (!clienteSeleccionado || r.cliente_id === clienteSeleccionado.id),
   );
   const todasLaPaginaSeleccionadas =
@@ -263,7 +266,7 @@ export function ListadoRemisiones() {
         <Checkbox
           aria-label={`Seleccionar remisión ${formatNumeroRemision(r.numero_remision)}`}
           checked={seleccionadas.has(r.id)}
-          disabled={r.estado_facturacion === "FACTURADA"}
+          disabled={!esFacturable(r.estado_facturacion)}
           onChange={() => toggleSeleccion(r)}
         />
       ),
@@ -315,7 +318,7 @@ export function ListadoRemisiones() {
             icon={<Printer size={16} />}
             onClick={() => window.open(`/remisiones/${r.id}/imprimir`, "_blank")}
           />
-          {r.estado_facturacion !== "FACTURADA" && (
+          {esFacturable(r.estado_facturacion) && (
             <IconButton
               label="Agregar a factura existente"
               icon={<FileStack size={16} />}
@@ -328,7 +331,7 @@ export function ListadoRemisiones() {
   ];
 
   const getRowClassName = (r: Remision) => {
-    if (r.estado_facturacion === "FACTURADA") return tableStyles.rowDisabled;
+    if (!esFacturable(r.estado_facturacion)) return tableStyles.rowDisabled;
     if (seleccionadas.has(r.id)) return tableStyles.rowSelected;
     return undefined;
   };
@@ -377,9 +380,11 @@ export function ListadoRemisiones() {
                   className={listStyles.chipSelect}
                 >
                   <option value="">Todos</option>
-                  <option value="NO_FACTURADA">No facturada</option>
-                  <option value="FACTURADA_PARCIAL">Facturada parcial</option>
-                  <option value="FACTURADA">Facturada</option>
+                  {ESTADOS_FACTURACION.map((e) => (
+                    <option key={e} value={e}>
+                      {ESTADO_FACTURACION_LABEL[e]}
+                    </option>
+                  ))}
                 </select>
               </label>
               <div
@@ -466,6 +471,15 @@ export function ListadoRemisiones() {
           value={hasta}
           onChange={(v) => {
             setHasta(v);
+            setPage(1);
+          }}
+        />
+        <FiltroAnioMes
+          anio={anio}
+          mes={mes}
+          onChange={(a, m) => {
+            setAnio(a);
+            setMes(m);
             setPage(1);
           }}
         />

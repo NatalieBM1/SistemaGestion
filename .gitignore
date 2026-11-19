@@ -18,11 +18,11 @@ frontend/dist/
 dist/
 frontend/.vite/
 
-# ── Variables de entorno — NUNCA versionar secretos reales ──────────────────
+# ── Variables de entorno — NUNCA versionar ───────────────────────────────────
 .env
 .env.*
-# .env.example sí va versionado (solo tiene CAMBIAR_ESTA_CLAVE, no secretos)
-!.env.example
+*.env
+*.env.*
 
 # ── Backups, dumps y datos sensibles ────────────────────────────────────────
 backups/
@@ -31,29 +31,25 @@ capturas/
 *.dump
 *.sql
 *.sql.gz
-backend/app/data_import/backups/
-backend/app/data_import/*.xlsm
+backend/app/data_import/
+scripts/
+
+# ── Binarios y archivos de Office ────────────────────────────────────────────
+*.xlsx
 *.xlsm
-backend/app/data_import/*.csv
-backend/app/data_import/*.xlsx
+*.xls
+*.csv
 
 # ── Logs y temporales ────────────────────────────────────────────────────────
 *.log
 *.tmp
 tmp_*
 
-# ── Editor ────────────────────────────────────────────────────────────────────
+# ── Editor ───────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
 
-# ── OS ────────────────────────────────────────────────────────────────────────
+# ── OS ───────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Scripts de desarrollo (no son c�digo de producci�n)
-frontend/scripts/

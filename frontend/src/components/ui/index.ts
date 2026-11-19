@@ -5,6 +5,7 @@ export { Checkbox } from "./Checkbox";
 export { EmptyState } from "./EmptyState";
 export { Input } from "./Input";
 export { InputFecha } from "./InputFecha";
+export { FiltroAnioMes, aniosDisponibles, MESES } from "./FiltroAnioMes";
 export { InputNumero } from "./InputNumero";
 export { Modal } from "./Modal";
 export { Select } from "./Select";

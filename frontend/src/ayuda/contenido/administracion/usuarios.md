@@ -59,10 +59,30 @@ Un usuario desactivado aparece con estado **Inactivo**, no puede iniciar sesión
 3. Haz clic en **Guardar**. Verás «Contraseña de '…' actualizada correctamente.»
 :::
 
-Las sesiones abiertas de ese usuario se cierran: deberá entrar con la contraseña nueva.
+Las sesiones abiertas de ese usuario se cierran: deberá entrar con la contraseña nueva y, al entrar, el sistema le pedirá **cambiarla** antes de dejarle usar cualquier otra pantalla (ver [Cambio obligatorio al entrar](/ayuda/primeros-pasos/recuperar-y-cambiar-contrasena#obligatorio)). Si cambias tu propia contraseña desde aquí no se te pide de nuevo.
+
+En el sistema en producción, las cuentas nuevas también deben cambiar la contraseña al primer ingreso.
 
 :::nota
 Úsalo solo cuando la persona no pueda hacerlo por su cuenta (por ejemplo, si no tiene acceso a su correo). Cada usuario puede [recuperar](/ayuda/primeros-pasos/recuperar-y-cambiar-contrasena#recuperar) o [cambiar](/ayuda/primeros-pasos/recuperar-y-cambiar-contrasena#cambiar) su propia contraseña sin ayuda.
+:::
+
+## Activar la cuenta de un usuario histórico {#activar-historico}
+
+Los usuarios **históricos** son las personas que crearon remisiones en el Excel anterior. Aparecen con estado **Inactivo** y, en Email, «Histórico, sin acceso». Para darles acceso **no crees un usuario nuevo**: activa el que ya existe, así sus remisiones quedan a su nombre.
+
+:::pasos
+1. En la fila del usuario histórico, haz clic en **Activar cuenta**.
+2. Revisa la **Identificación**, escribe el **Correo** y elige el **Rol**.
+3. Haz clic en **Activar cuenta**.
+4. Copia la **Contraseña temporal** que aparece y entrégala a la persona por un canal seguro. Se muestra **una sola vez**.
+5. Haz clic en **Listo**.
+:::
+
+Al entrar con esa contraseña, el sistema le pedirá cambiarla antes de usar cualquier otra pantalla.
+
+:::importante
+A un usuario histórico no se le puede poner correo, contraseña ni roles con **Editar**: solo con **Activar cuenta**, que genera una contraseña aleatoria. Si pierdes la contraseña temporal antes de entregarla, usa **Cambiar contraseña** en su fila (también le pedirá cambiarla al entrar).
 :::
 
 ## Reglas y validaciones

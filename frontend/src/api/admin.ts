@@ -4,7 +4,9 @@ import type { PaginatedResponse } from "./catalogos";
 export interface UsuarioAdmin {
   id: number;
   nombre: string;
-  email: string;
+  /** Vacío en usuarios históricos (creadores de remisiones del Excel, sin acceso). */
+  email: string | null;
+  historico?: boolean;
   identificacion: string | null;
   activo: boolean;
   creado_en: string;
@@ -44,6 +46,23 @@ export async function createUsuario(payload: Record<string, unknown>): Promise<U
 
 export async function updateUsuario(id: number, payload: Record<string, unknown>): Promise<UsuarioAdmin> {
   const { data } = await apiClient.put<UsuarioAdmin>(`/api/admin/usuarios/${id}`, payload);
+  return data;
+}
+
+export interface ActivarHistoricoRespuesta {
+  usuario: UsuarioAdmin;
+  /** Se muestra una sola vez: no se guarda en ningún lado. */
+  password_temporal: string;
+}
+
+/** Convierte un usuario histórico en cuenta real: correo, rol, contraseña
+ * temporal aleatoria (la devuelve el servidor) y cambio obligatorio al entrar. */
+export async function activarUsuarioHistorico(payload: {
+  identificacion: string;
+  email: string;
+  rol: string;
+}): Promise<ActivarHistoricoRespuesta> {
+  const { data } = await apiClient.post<ActivarHistoricoRespuesta>("/api/admin/usuarios/historicos/activar", payload);
   return data;
 }
 

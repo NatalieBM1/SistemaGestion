@@ -139,7 +139,8 @@ def validar_camabaja(
         (
             t
             for t in session.exec(select(TipoServicio)).all()
-            if normalizar(t.nombre) == normalizar(NOMBRE_TIPO_SERVICIO_CAMABAJA)
+            # "Cama baja", "CAMA BAJA" o "CAMABAJA" (como viene del histórico).
+            if normalizar(t.nombre).replace(" ", "") == normalizar(NOMBRE_TIPO_SERVICIO_CAMABAJA).replace(" ", "")
         ),
         None,
     )

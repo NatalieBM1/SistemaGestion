@@ -131,6 +131,10 @@ def _remision_ids_por_factura(texto: str):
     )
 
 
+def _primer_dia_mes_siguiente(anio: int, mes: int) -> date:
+    return date(anio + 1, 1, 1) if mes == 12 else date(anio, mes + 1, 1)
+
+
 @router.get(
     "",
     response_model=PaginatedResponse[RemisionRead],
@@ -141,6 +145,8 @@ def listar_remisiones(
     page_size: int = Query(20, ge=1, le=100),
     desde: date | None = Query(None, description="Fecha desde (inclusive)"),
     hasta: date | None = Query(None, description="Fecha hasta (inclusive)"),
+    anio: int | None = Query(None, ge=2000, le=2100, description="Año de la fecha de la remisión"),
+    mes: int | None = Query(None, ge=1, le=12, description="Mes de la fecha de la remisión (con o sin año)"),
     numero_remision: str | None = Query(None),
     numero_orden_servicio: str | None = Query(None),
     tercero_id: int | None = Query(None, description="Coincide como cliente o conductor"),
@@ -158,6 +164,13 @@ def listar_remisiones(
         statement = statement.where(Remision.fecha >= desde)
     if hasta:
         statement = statement.where(Remision.fecha <= hasta)
+    if anio and mes:
+        # Rango (usa el índice por fecha) en lugar de extract().
+        statement = statement.where(Remision.fecha >= date(anio, mes, 1), Remision.fecha < _primer_dia_mes_siguiente(anio, mes))
+    elif anio:
+        statement = statement.where(Remision.fecha >= date(anio, 1, 1), Remision.fecha < date(anio + 1, 1, 1))
+    elif mes:
+        statement = statement.where(func.extract("month", Remision.fecha) == mes)
     if numero_remision:
         patrones = _patrones_busqueda_numero(numero_remision)
         statement = statement.where(

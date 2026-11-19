@@ -1,6 +1,6 @@
 ---
 titulo: Estados de facturación
-descripcion: Qué significan No facturada, Facturada parcial y Facturada.
+descripcion: Qué significan No facturada, Facturada parcial, Facturada y No aplica facturación.
 orden: 6
 rol: todos
 actualizado: 2026-11-16
@@ -8,15 +8,24 @@ actualizado: 2026-11-16
 
 ## Para qué sirve
 
-Cada remisión tiene un **estado de facturación** que el sistema calcula solo, comparando el valor total de la remisión con lo que ya se facturó. No se cambia a mano.
+Cada remisión tiene un **estado de facturación**. Los tres primeros los calcula el sistema solo, comparando el valor total de la remisión con lo que ya se facturó; «No aplica facturación» es una marca que se conserva.
 
-## Los tres estados
+## Los cuatro estados
 
 | Estado | Qué significa | Qué se puede hacer |
 |---|---|---|
 | **No facturada** | Todavía no tiene ninguna facturación activa. | Editarla, facturarla total o parcialmente, agregarla a una factura. |
 | **Facturada parcial** | Ya se facturó una parte; queda **saldo pendiente**. | Editarla y seguir facturando el saldo. |
 | **Facturada** | Se facturó por completo (saldo pendiente $ 0). | Solo consultarla: ya no se puede editar. |
+| **No aplica facturación** | La remisión no se factura (por ejemplo, un servicio interno o una donación). | Consultarla y editarla. No aparece como pendiente ni se puede facturar ni agregar a una factura. |
+
+## «No aplica facturación» {#no-aplica}
+
+A diferencia de los otros tres, este estado no se calcula: es una marca. El sistema la conserva aunque la remisión tenga facturas registradas (el histórico trae remisiones «No aplica» con factura, y se cargaron tal cual).
+
+- No cuenta en el indicador **Sin facturar** del Inicio.
+- Su casilla en el listado de remisiones está deshabilitada y el botón **Facturar** de la pestaña **Facturación** también.
+- Se puede filtrar en **Remisiones** y en **Reportes** con el estado **No aplica facturación**.
 
 ## Cómo se calculan
 

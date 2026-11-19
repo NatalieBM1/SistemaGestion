@@ -53,6 +53,10 @@ def calcular_valor_facturado_activo(session: Session, remision_id: int) -> Decim
     return sum((r.valor_facturado for r in registros), Decimal(0))
 
 
+ESTADO_NO_APLICA = "NO_APLICA"
+MOTIVO_NO_APLICA = "Está marcada como «No aplica facturación»."
+
+
 def recalcular_estado_facturacion(session: Session, remision_id: int) -> str:
     """Única fuente de verdad de remision.estado_facturacion."""
     remision = session.get(Remision, remision_id)
@@ -61,6 +65,11 @@ def recalcular_estado_facturacion(session: Session, remision_id: int) -> str:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No se encontró la remisión con id {remision_id}",
         )
+    # "No aplica facturación" es una marca del usuario, no un resultado del
+    # cálculo: se conserva aunque cambien las facturaciones (el histórico
+    # trae remisiones NO_APLICA con factura).
+    if remision.estado_facturacion == ESTADO_NO_APLICA:
+        return ESTADO_NO_APLICA
     valor_total = calcular_valor_total_remision(session, remision_id)
     valor_facturado = calcular_valor_facturado_activo(session, remision_id)
 
@@ -142,6 +151,14 @@ def facturar_remision(
 ) -> RemisionFacturacion:
     validar_formato_numero_factura(numero_factura)
 
+    if remision.estado_facturacion == ESTADO_NO_APLICA:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"La remisión {numero_remision_svc.para_mostrar(remision.numero_remision)} está marcada como "
+                "«No aplica facturación»: no se puede facturar."
+            ),
+        )
     if remision.estado_facturacion == "FACTURADA":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -275,6 +292,11 @@ def _validar_seleccion_para_facturar_multiple(
     cliente_id = remisiones[0].cliente_id
 
     for r in remisiones:
+        if r.estado_facturacion == ESTADO_NO_APLICA:
+            errores.append(
+                {"remision_id": r.id, "numero_remision": r.numero_remision, "motivo": MOTIVO_NO_APLICA}
+            )
+            continue
         if r.estado_facturacion == "FACTURADA":
             errores.append(
                 {
@@ -440,6 +462,9 @@ def agregar_remisiones_a_factura(
             errores.append(
                 {"remision_id": remision.id, "numero_remision": remision.numero_remision, "motivo": "Ya está en esta factura."}
             )
+            continue
+        if remision.estado_facturacion == ESTADO_NO_APLICA:
+            errores.append({"remision_id": remision.id, "numero_remision": remision.numero_remision, "motivo": MOTIVO_NO_APLICA})
             continue
         if remision.estado_facturacion == "FACTURADA":
             errores.append(
@@ -625,11 +650,29 @@ def serializar_factura(session: Session, factura: Factura) -> FacturaRead:
     ).all()
     cantidad_remisiones = len({r.remision_id for r in activos})
     valor_total_facturado = sum((r.valor_facturado for r in activos), Decimal(0))
+    clientes = session.exec(
+        select(Tercero.id, Tercero.nombre)
+        .join(Remision, Remision.cliente_id == Tercero.id)
+        .join(RemisionFacturacion, RemisionFacturacion.remision_id == Remision.id)
+        .where(RemisionFacturacion.factura_id == factura.id)
+        .distinct()
+    ).all()
+    if len(clientes) == 1:
+        cliente_id, cliente_nombre = clientes[0]
+    else:
+        cliente_id, cliente_nombre = None, (f"VARIOS CLIENTES ({len(clientes)})" if clientes else None)
+    tipo = None
+    if activos:
+        tipo = "PARCIAL" if any(r.tipo_facturacion == "PARCIAL" for r in activos) else "TOTAL"
     return FacturaRead(
         numero_factura=factura.numero_factura,
         fecha_factura=factura.fecha_factura,
         cantidad_remisiones=cantidad_remisiones,
         valor_total_facturado=valor_total_facturado,
+        cliente_id=cliente_id,
+        cliente_nombre=cliente_nombre,
+        tipo=tipo,
+        estado="ACTIVA" if activos else "ANULADA",
     )
 
 

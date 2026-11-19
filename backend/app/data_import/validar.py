@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import text
 from sqlmodel import Session
@@ -13,6 +13,12 @@ from app.core import numero_remision as numero_remision_svc
 from app.data_import.lector import Libro
 
 CERO = Decimal(0)
+CENTAVO = Decimal("0.01")
+
+
+def centavos(valor) -> Decimal:
+    """Como lo guarda la base (numeric(14,2), redondeo al centavo)."""
+    return Decimal(valor or 0).quantize(CENTAVO, rounding=ROUND_HALF_UP)
 
 
 def _vacio_sumas() -> dict[str, Decimal]:
@@ -23,27 +29,27 @@ def estadisticas_excel(libro: Libro) -> dict:
     L = libro.lineas
     por_anio: dict[int, dict[str, Decimal]] = defaultdict(_vacio_sumas)
     facturado_por_anio_factura: dict[int, Decimal] = defaultdict(lambda: CERO)
-    for l in L:
-        a = por_anio[l.fecha.year]
-        a["material"] += l.valor_material or 0
-        a["flete"] += l.valor_flete or 0
-        a["camabaja"] += l.valor_camabaja or 0
-        a["facturado"] += l.vr_facturado or 0
-        if l.factura and l.fecha_factura:
-            facturado_por_anio_factura[l.fecha_factura.year] += (l.vr_parcial if l.vr_parcial is not None else l.vr_facturado) or 0
+    for ln in L:
+        a = por_anio[ln.fecha.year]
+        a["material"] += centavos(ln.valor_material)
+        a["flete"] += centavos(ln.valor_flete)
+        a["camabaja"] += centavos(ln.valor_camabaja)
+        a["facturado"] += centavos(ln.vr_facturado)
+        if ln.factura and ln.fecha_factura:
+            facturado_por_anio_factura[ln.fecha_factura.year] += centavos(ln.vr_parcial if ln.vr_parcial is not None else ln.vr_facturado)
     prefijos = defaultdict(lambda: [0, set()])
-    for l in L:
-        prefijos[l.prefijo][0] += 1
-        prefijos[l.prefijo][1].add(l.consecutivo)
+    for ln in L:
+        prefijos[ln.prefijo][0] += 1
+        prefijos[ln.prefijo][1].add(ln.consecutivo)
     return {
         "registros": len(L),
         "remisiones": len(libro.remisiones),
-        "facturas": len({l.factura for l in L if l.factura}),
-        "clientes": len({l.cliente_id for l in L if l.cliente_id}),
-        "conductores": len({l.conductor_id for l in L if l.conductor_id}),
-        "placas": len({l.vehiculo for l in L if l.vehiculo}),
-        "productos": len({l.producto for l in L if l.producto}),
-        "lineas_por_estado": Counter(l.estado or "(sin estado)" for l in L),
+        "facturas": len({ln.factura for ln in L if ln.factura}),
+        "clientes": len({ln.cliente_id for ln in L if ln.cliente_id}),
+        "conductores": len({ln.conductor_id for ln in L if ln.conductor_id}),
+        "placas": len({ln.vehiculo for ln in L if ln.vehiculo}),
+        "productos": len({ln.producto for ln in L if ln.producto}),
+        "lineas_por_estado": Counter(ln.estado or "(sin estado)" for ln in L),
         "prefijos": {p: (v[0], len(v[1])) for p, v in sorted(prefijos.items())},
         "por_anio": dict(sorted(por_anio.items())),
         "facturado_por_anio_factura": dict(sorted(facturado_por_anio_factura.items())),

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, Pencil, Plus, Search } from "lucide-react";
+import { KeyRound, Pencil, Plus, Search, UserCheck } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { getApiErrorMessage } from "../../api/errors";
@@ -37,6 +37,7 @@ import { useAuthStore } from "../../store/authStore";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "../../components/CatalogoCRUD.module.css";
 import { AYUDA } from "../../ayuda/rutas";
+import { ActivarHistoricoModal } from "./ActivarHistoricoModal";
 
 const PERMISO_ADMIN = "usuarios.administrar";
 
@@ -71,6 +72,7 @@ export function Usuarios() {
   const [editingItem, setEditingItem] = useState<UsuarioAdmin | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [passwordTarget, setPasswordTarget] = useState<UsuarioAdmin | null>(null);
+  const [activarTarget, setActivarTarget] = useState<UsuarioAdmin | null>(null);
   const { ordenamiento, alternar: alternarOrden } = useOrdenamiento();
 
   const { data: roles } = useQuery({
@@ -114,7 +116,7 @@ export function Usuarios() {
     setFormError(null);
     reset({
       nombre: item.nombre,
-      email: item.email,
+      email: item.email ?? "",
       identificacion: item.identificacion ?? "",
       password: "",
       activo: item.activo,
@@ -169,7 +171,7 @@ export function Usuarios() {
 
   const columns: TableColumn<UsuarioAdmin>[] = [
     { key: "nombre", header: "Nombre", sortField: "nombre", render: (u) => u.nombre },
-    { key: "email", header: "Email", monoData: true, sortField: "email", render: (u) => u.email },
+    { key: "email", header: "Email", monoData: true, sortField: "email", render: (u) => u.email ?? (u.historico ? "Histórico, sin acceso" : "—") },
     {
       key: "roles", sortField: "roles",
       header: "Roles",
@@ -191,8 +193,14 @@ export function Usuarios() {
       align: "right",
       render: (row) => (
         <div style={{ display: "flex", gap: "var(--space-1)", justifyContent: "flex-end" }}>
-          <IconButton label="Editar" icon={<Pencil size={16} />} onClick={() => openEditForm(row)} />
-          <IconButton label="Cambiar contraseña" icon={<KeyRound size={16} />} onClick={() => setPasswordTarget(row)} />
+          {row.historico ? (
+            <IconButton label="Activar cuenta" icon={<UserCheck size={16} />} onClick={() => setActivarTarget(row)} />
+          ) : (
+            <>
+              <IconButton label="Editar" icon={<Pencil size={16} />} onClick={() => openEditForm(row)} />
+              <IconButton label="Cambiar contraseña" icon={<KeyRound size={16} />} onClick={() => setPasswordTarget(row)} />
+            </>
+          )}
         </div>
       ),
     },
@@ -383,6 +391,7 @@ export function Usuarios() {
       </Modal>
 
       <CambiarPasswordModal usuario={passwordTarget} onClose={() => setPasswordTarget(null)} />
+      <ActivarHistoricoModal usuario={activarTarget} onClose={() => setActivarTarget(null)} />
     </PageHeader>
   );
 }

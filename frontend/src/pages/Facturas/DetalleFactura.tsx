@@ -32,6 +32,7 @@ import { formatNumeroRemision } from "../../lib/formatNumeroRemision";
 import { usePageTitle } from "../../store/pageTitleStore";
 import tableStyles from "../../components/ui/Table.module.css";
 import { AYUDA } from "../../ayuda/rutas";
+import { esFacturable } from "../../lib/estadoFacturacion";
 
 function PendienteCell({ remisionId }: { remisionId: number }) {
   const { data, isLoading } = useQuery({
@@ -122,7 +123,7 @@ export function DetalleFactura() {
   const idsYaEnFactura = new Set(activas.map((r) => r.remision_id));
   const elegibles = ordenarEnCliente(
     (candidatas?.items ?? []).filter(
-      (r) => r.estado_facturacion !== "FACTURADA" && !idsYaEnFactura.has(r.id),
+      (r) => esFacturable(r.estado_facturacion) && !idsYaEnFactura.has(r.id),
     ),
     ordenCandidatas,
     {

@@ -160,7 +160,8 @@ export function RemisionForm() {
 
   const prefijoSeleccionado = prefijos?.find((p) => p.id === watch("prefijo_id"));
   const tipoServicioCamabaja = tiposServicio?.find(
-    (t) => normalizarTexto(t.nombre) === normalizarTexto(NOMBRE_TIPO_SERVICIO_CAMABAJA),
+    // "Cama baja", "CAMA BAJA" o "CAMABAJA" (como viene del histórico).
+    (t) => normalizarTexto(t.nombre).replace(/\s+/g, "") === normalizarTexto(NOMBRE_TIPO_SERVICIO_CAMABAJA).replace(/\s+/g, ""),
   );
   const esCamabaja = tipoServicioCamabaja != null && watch("tipo_servicio_id") === tipoServicioCamabaja.id;
   const proyectoId = watch("proyecto_id");

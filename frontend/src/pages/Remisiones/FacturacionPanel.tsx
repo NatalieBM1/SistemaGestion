@@ -10,6 +10,7 @@ import {
   getResumenFacturacion,
 } from "../../api/facturas";
 import { Badge, Button, Input, InputFecha, InputNumero, Modal, Select, useToast } from "../../components/ui";
+import { esFacturable } from "../../lib/estadoFacturacion";
 import { ESTADO_FACTURACION_LABEL, ESTADO_FACTURACION_VARIANT } from "../../lib/estadoFacturacion";
 import { formatCOP } from "../../lib/format";
 import styles from "../../components/CatalogoCRUD.module.css";
@@ -65,7 +66,7 @@ export function FacturacionPanel({
   });
 
   const estado = resumen?.estado_facturacion ?? "NO_FACTURADA";
-  const puedeFacturar = puedeEscribir && estado !== "FACTURADA";
+  const puedeFacturar = puedeEscribir && esFacturable(estado);
 
   return (
     <div style={{ marginTop: "var(--space-6)" }}>
@@ -75,7 +76,13 @@ export function FacturacionPanel({
           variant="primary"
           onClick={() => setModalOpen(true)}
           disabled={!puedeFacturar}
-          title={estado === "FACTURADA" ? "La remisión ya está totalmente facturada." : undefined}
+          title={
+            estado === "FACTURADA"
+              ? "La remisión ya está totalmente facturada."
+              : estado === "NO_APLICA"
+                ? "La remisión está marcada como «No aplica facturación»."
+                : undefined
+          }
         >
           Facturar
         </Button>

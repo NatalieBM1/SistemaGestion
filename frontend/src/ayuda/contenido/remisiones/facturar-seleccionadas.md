@@ -37,7 +37,7 @@ Roles **Administrador** y **Operador**.
 ### Reglas y validaciones
 
 - Todas las remisiones deben ser del **mismo cliente**: al marcar la primera, las de otros clientes quedan deshabilitadas.
-- Las remisiones **Facturada** no se pueden marcar.
+- Las remisiones **Facturada** y las **No aplica facturación** no se pueden marcar.
 - Cada remisión se factura por su **saldo pendiente** completo.
 - Si alguna no se puede facturar verás «No se puede facturar esta selección:» con el motivo de cada una.
 - Para quitar la selección haz clic en **Limpiar** o presiona **Esc**.

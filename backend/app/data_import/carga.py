@@ -30,7 +30,8 @@ from sqlmodel import Session, select
 
 from app.core import numero_remision as numero_remision_svc
 from app.data_import import normalizar as N
-from app.data_import.lector import CAMPOS_CABECERA, Libro, Linea, Remision as RemisionExcel
+from app.data_import.lector import Libro, Linea
+from app.data_import.lector import Remision as RemisionExcel
 from app.models.activo import Activo, EmpresaGrupo
 from app.models.catalogos import (
     FormaPago,
@@ -57,7 +58,14 @@ RUTA_DANE_NACIONAL = (
 
 PREFIJOS_AUTOMATICOS = ["GTS", "GIS", "GI", "PUT", "AJUSTE", "AE", "GT", "GTC", "GTI", "NC"]
 PREFIJOS_MANUALES = ["GTM"]
-ALIAS_MUNICIPIO = {"SAN JUAN DE PASTO": "PASTO"}
+# Nombres del Excel que no son el nombre DANE del municipio: la capital o la
+# cabecera municipal escrita con otro nombre (se listan en el informe).
+ALIAS_MUNICIPIO = {
+    "SAN JUAN DE PASTO": "PASTO",
+    "PIEDRANCHA": "MALLAMA",  # cabecera municipal de Mallama (52435)
+    "GUACHAVES": "SANTACRUZ",  # Santa Cruz de Guachavés, cabecera de Santacruz (52699)
+    "SANTA CRUZ DE GUACHAVES": "SANTACRUZ",
+}
 SIN_ESPECIFICAR = "00000"
 
 
@@ -131,24 +139,24 @@ class Carga:
     def catalogos(self):
         L, cfg = self.libro, self.libro.configuracion
         self.formas = self._por_clave(FormaPago, "nombre")
-        for v in cfg.get("F PAGO", []) + [l.forma_pago for l in L.lineas]:
+        for v in cfg.get("F PAGO", []) + [ln.forma_pago for ln in L.lineas]:
             self._catalogo(self.formas, FormaPago, N.nombre_catalogo(v), "formas_pago")
 
         self.tipos = self._por_clave(TipoServicio, "nombre")
-        for v in cfg.get("DETALLE1", []) + [l.tipo_servicio for l in L.lineas]:
+        for v in cfg.get("DETALLE1", []) + [ln.tipo_servicio for ln in L.lineas]:
             self._catalogo(self.tipos, TipoServicio, N.tipo_servicio(v), "tipos_servicio")
 
         self.unidades = self._por_clave(UnidadMedida, "nombre")
-        for v in cfg.get("U_MEDIDA", []) + [l.unidad for l in L.lineas]:
+        for v in cfg.get("U_MEDIDA", []) + [ln.unidad for ln in L.lineas]:
             self._catalogo(self.unidades, UnidadMedida, N.unidad(v), "unidades_medida")
 
         self.productos = self._por_clave(Producto, "nombre")
-        for v in cfg.get("DETALLE2", []) + [l.producto for l in L.lineas]:
+        for v in cfg.get("DETALLE2", []) + [ln.producto for ln in L.lineas]:
             self._catalogo(self.productos, Producto, N.nombre_catalogo(v), "productos")
 
         self.prefijos = self._por_clave(Prefijo, "codigo")
         codigos = [N.nombre_catalogo(p) for p in cfg.get("PREFIJOREMISIONES", [])]
-        codigos += PREFIJOS_AUTOMATICOS + PREFIJOS_MANUALES + [l.prefijo for l in L.lineas]
+        codigos += PREFIJOS_AUTOMATICOS + PREFIJOS_MANUALES + [ln.prefijo for ln in L.lineas]
         for codigo in dict.fromkeys(c for c in codigos if c):
             if N.clave(codigo) not in self.prefijos:
                 self.prefijos[N.clave(codigo)] = self._nuevo(
@@ -157,7 +165,7 @@ class Carga:
 
         self.prefijos_factura = self._por_clave(PrefijoFactura, "codigo")
         series = [N.nombre_catalogo(p) for p in cfg.get("PREFIJOFACTURAS", [])]
-        series += [N.serie_factura(l.factura) for l in L.lineas if l.factura]
+        series += [N.serie_factura(ln.factura) for ln in L.lineas if ln.factura]
         for codigo in dict.fromkeys(c for c in series if c):
             if N.clave(codigo) not in self.prefijos_factura:
                 self.prefijos_factura[N.clave(codigo)] = self._nuevo(PrefijoFactura(codigo=codigo), "prefijos_factura")
@@ -241,6 +249,8 @@ class Carga:
                     encontrado = m
                     break
             if encontrado:
+                if c != nombre and c == ALIAS_MUNICIPIO.get(nombre):
+                    self.r.ubicaciones_resueltas_por_centro[texto] = f"{encontrado.nombre} (equivalencia: {nombre} = cabecera de {encontrado.nombre})"
                 break
         if encontrado is None:
             for c in candidatos:
@@ -299,16 +309,16 @@ class Carga:
                 "terceros",
             )
         # Clientes y conductores que no estén en la hoja Terceros.
-        for l in self.libro.lineas:
-            for ident, nombre in ((l.cliente_id, l.cliente_nombre), (l.conductor_id, l.conductor_nombre)):
+        for ln in self.libro.lineas:
+            for ident, nombre in ((ln.cliente_id, ln.cliente_nombre), (ln.conductor_id, ln.conductor_nombre)):
                 if ident and ident not in self.terc:
                     self.terc[ident] = self._nuevo(Tercero(identificacion=ident, nombre=nombre or ident), "terceros_desde_registros")
         # Tipos CLIENTE / CONDUCTOR.
         existentes = {(tt.tercero_id, tt.tipo_id) for tt in self.s.exec(select(TerceroTipo)).all()}
         tipo_cli = self.tipos_tercero["CLIENTE"]
         tipo_con = self.tipos_tercero["CONDUCTOR"]
-        pares = {(self.terc[l.cliente_id].id, tipo_cli.id) for l in self.libro.lineas if l.cliente_id}
-        pares |= {(self.terc[l.conductor_id].id, tipo_con.id) for l in self.libro.lineas if l.conductor_id}
+        pares = {(self.terc[ln.cliente_id].id, tipo_cli.id) for ln in self.libro.lineas if ln.cliente_id}
+        pares |= {(self.terc[ln.conductor_id].id, tipo_con.id) for ln in self.libro.lineas if ln.conductor_id}
         for tercero_id, tipo_id in sorted(pares - existentes):
             self.r.creados["tercero_tipos"] += 1
             if not self.sim:
@@ -318,8 +328,8 @@ class Carga:
     def activos(self):
         self.act = {N.clave(a.placa): a for a in self.s.exec(select(Activo)).all()}
         cfg = self.libro.configuracion
-        vehiculos = [N.nombre_catalogo(p) for p in cfg.get("VEHICULOS", [])] + [l.vehiculo for l in self.libro.lineas]
-        camabajas = [N.nombre_catalogo(p) for p in cfg.get("CAMABAJAS", [])] + [l.camabaja for l in self.libro.lineas]
+        vehiculos = [N.nombre_catalogo(p) for p in cfg.get("VEHICULOS", [])] + [ln.vehiculo for ln in self.libro.lineas]
+        camabajas = [N.nombre_catalogo(p) for p in cfg.get("CAMABAJAS", [])] + [ln.camabaja for ln in self.libro.lineas]
         for placas, tipo in ((camabajas, "CAMA BAJA"), (vehiculos, "VEHÍCULO")):
             for placa in dict.fromkeys(p for p in placas if p):
                 if N.clave(placa) not in self.act:
@@ -331,9 +341,9 @@ class Carga:
         self.usu = {u.identificacion: u for u in existentes}
         nombres_terceros = {N.identificacion(f.get(self.libro.columnas_terceros[0])): N.texto(f.get(self.libro.columnas_terceros[1])) for f in self.libro.terceros}
         por_id: dict[str, Counter] = defaultdict(Counter)
-        for l in self.libro.lineas:
-            if l.usuario_id:
-                por_id[l.usuario_id][l.usuario_nombre or ""] += 1
+        for ln in self.libro.lineas:
+            if ln.usuario_id:
+                por_id[ln.usuario_id][ln.usuario_nombre or ""] += 1
         for ident, nombres in por_id.items():
             if ident in self.usu:
                 self.r.existentes["usuarios_historicos"] += 1
@@ -350,21 +360,21 @@ class Carga:
         self.tram = {(t.proyecto_id, N.clave(t.nombre)): t for t in self.s.exec(select(Tramo)).all()}
         self.ods = {N.clave(o.numero): o for o in self.s.exec(select(OrdenServicio)).all()}
         clientes_ods: dict[str, set] = defaultdict(set)
-        for l in self.libro.lineas:
-            cliente = self.terc[l.cliente_id]
-            if l.proyecto:
-                k = (N.clave(l.proyecto), cliente.id)
+        for ln in self.libro.lineas:
+            cliente = self.terc[ln.cliente_id]
+            if ln.proyecto:
+                k = (N.clave(ln.proyecto), cliente.id)
                 if k not in self.proy:
-                    self.proy[k] = self._nuevo(Proyecto(nombre=l.proyecto, cliente_id=cliente.id), "proyectos")
-                if l.tramo:
-                    kt = (self.proy[k].id, N.clave(l.tramo))
+                    self.proy[k] = self._nuevo(Proyecto(nombre=ln.proyecto, cliente_id=cliente.id), "proyectos")
+                if ln.tramo:
+                    kt = (self.proy[k].id, N.clave(ln.tramo))
                     if kt not in self.tram:
-                        self.tram[kt] = self._nuevo(Tramo(proyecto_id=self.proy[k].id, nombre=l.tramo), "tramos")
-            if l.ods:
-                clientes_ods[N.clave(l.ods)].add(cliente.id)
-                if N.clave(l.ods) not in self.ods:
-                    self.ods[N.clave(l.ods)] = self._nuevo(
-                        OrdenServicio(numero=l.ods, cliente_id=cliente.id, valor_tope=None, saldo_disponible=None),
+                        self.tram[kt] = self._nuevo(Tramo(proyecto_id=self.proy[k].id, nombre=ln.tramo), "tramos")
+            if ln.ods:
+                clientes_ods[N.clave(ln.ods)].add(cliente.id)
+                if N.clave(ln.ods) not in self.ods:
+                    self.ods[N.clave(ln.ods)] = self._nuevo(
+                        OrdenServicio(numero=ln.ods, cliente_id=cliente.id, valor_tope=None, saldo_disponible=None),
                         "ordenes_servicio",
                     )
         self.r.ods_varios_clientes = sorted(k for k, v in clientes_ods.items() if len(v) > 1)
@@ -422,29 +432,29 @@ class Carga:
         productos = [
             RemisionProducto(
                 remision_id=0,
-                producto_id=self.productos[N.clave(l.producto)].id if l.producto else None,
-                cantidad=l.cantidad,
-                unidad_medida_id=self.unidades[N.clave(l.unidad)].id if l.unidad else None,
-                valor_material=l.valor_material or Decimal(0),
-                valor_flete=l.valor_flete or Decimal(0),
-                valor_camabaja=l.valor_camabaja or Decimal(0),
-                numero_viajes=l.numero_viajes,
-                valor_comision=l.valor_comision or Decimal(0),
-                valor_costo=l.valor_costo or Decimal(0),
+                producto_id=self.productos[N.clave(ln.producto)].id if ln.producto else None,
+                cantidad=ln.cantidad,
+                unidad_medida_id=self.unidades[N.clave(ln.unidad)].id if ln.unidad else None,
+                valor_material=ln.valor_material or Decimal(0),
+                valor_flete=ln.valor_flete or Decimal(0),
+                valor_camabaja=ln.valor_camabaja or Decimal(0),
+                numero_viajes=ln.numero_viajes,
+                valor_comision=ln.valor_comision or Decimal(0),
+                valor_costo=ln.valor_costo or Decimal(0),
             )
-            for l in rem.lineas
+            for ln in rem.lineas
         ]
         # Facturación: una por (remisión, factura), sumando Vr Facturado de
         # sus líneas (Vr Facturado viene por línea). PARCIAL si alguna línea
         # lo dice; si viene Vr Parcial Facturado se usa ese valor.
         por_factura: dict[str, list[Linea]] = defaultdict(list)
-        for l in rem.lineas:
-            if l.factura:
-                por_factura[l.factura].append(l)
+        for ln in rem.lineas:
+            if ln.factura:
+                por_factura[ln.factura].append(ln)
         facturaciones = []
         for numero, lineas in por_factura.items():
-            tipo = "PARCIAL" if any(l.tipo_facturacion == "PARCIAL" for l in lineas) else "TOTAL"
-            valor = sum(((l.vr_parcial if l.vr_parcial is not None else l.vr_facturado) or Decimal(0) for l in lineas), Decimal(0))
+            tipo = "PARCIAL" if any(ln.tipo_facturacion == "PARCIAL" for ln in lineas) else "TOTAL"
+            valor = sum(((ln.vr_parcial if ln.vr_parcial is not None else ln.vr_facturado) or Decimal(0) for ln in lineas), Decimal(0))
             facturaciones.append((numero, lineas[0].fecha_factura, tipo, valor))
         return remision, productos, facturaciones
 
@@ -473,7 +483,7 @@ class Carga:
                     for _, remision, _, _ in armadas:
                         self.s.add(remision)
                     self.s.flush()
-                    for rem, remision, productos, facturaciones in armadas:
+                    for _rem, remision, productos, facturaciones in armadas:
                         for p in productos:
                             p.remision_id = remision.id
                             self.s.add(p)
@@ -512,7 +522,7 @@ class Carga:
                     self.s.rollback()
                     self.fact = {f.numero_factura: f for f in self.s.exec(select(Factura)).all()}
                 for rem in bloque:
-                    self.r.fallidas.append((rem.numero, [l.fila for l in rem.lineas], f"{type(exc).__name__}: {str(exc)[:200]}"))
+                    self.r.fallidas.append((rem.numero, [ln.fila for ln in rem.lineas], f"{type(exc).__name__}: {str(exc)[:200]}"))
             self._progreso(min(i + self.lote, total), total, inicio)
         if total:
             sys.stderr.write("\n")

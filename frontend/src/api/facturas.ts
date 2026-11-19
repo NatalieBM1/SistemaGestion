@@ -6,6 +6,12 @@ export interface Factura {
   fecha_factura: string;
   cantidad_remisiones: number;
   valor_total_facturado: string;
+  /** Cliente de sus remisiones; "VARIOS CLIENTES (n)" si hay más de uno. */
+  cliente_id: number | null;
+  cliente_nombre: string | null;
+  /** TOTAL o PARCIAL; null si todas sus facturaciones están anuladas. */
+  tipo: "TOTAL" | "PARCIAL" | null;
+  estado: "ACTIVA" | "ANULADA";
 }
 
 export interface RemisionFacturacion {
@@ -86,6 +92,11 @@ export interface FacturaListParams {
   page_size?: number;
   desde?: string;
   hasta?: string;
+  anio?: number;
+  mes?: number;
+  cliente_id?: number;
+  serie?: string;
+  estado?: "ACTIVA" | "ANULADA";
   numero_factura?: string;
   ordenar_por?: string;
   sentido?: "asc" | "desc";

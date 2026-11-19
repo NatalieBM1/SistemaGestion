@@ -316,6 +316,52 @@ async def actualizar_por_excel(
 # --- consulta ---
 
 
+def filtrar_facturas(
+    statement,
+    *,
+    desde: date | None = None,
+    hasta: date | None = None,
+    anio: int | None = None,
+    mes: int | None = None,
+    cliente_id: int | None = None,
+    serie: str | None = None,
+    estado: str | None = None,
+    numero_factura: str | None = None,
+):
+    """Filtros del listado de facturas (también los usa el cierre anual)."""
+    if desde:
+        statement = statement.where(Factura.fecha_factura >= desde)
+    if hasta:
+        statement = statement.where(Factura.fecha_factura <= hasta)
+    if anio and mes:
+        fin = date(anio + 1, 1, 1) if mes == 12 else date(anio, mes + 1, 1)
+        statement = statement.where(Factura.fecha_factura >= date(anio, mes, 1), Factura.fecha_factura < fin)
+    elif anio:
+        statement = statement.where(Factura.fecha_factura >= date(anio, 1, 1), Factura.fecha_factura < date(anio + 1, 1, 1))
+    elif mes:
+        statement = statement.where(func.extract("month", Factura.fecha_factura) == mes)
+    if numero_factura:
+        statement = statement.where(Factura.numero_factura.ilike(f"%{numero_factura.strip()}%"))
+    if serie:
+        s = serie.strip().upper().rstrip("-")
+        statement = statement.where(func.upper(Factura.numero_factura).like(f"{s}-%"))
+    activas = select(RemisionFacturacion.id).where(
+        RemisionFacturacion.factura_id == Factura.id, RemisionFacturacion.anulada.is_(False)
+    )
+    if estado == "ACTIVA":
+        statement = statement.where(activas.exists())
+    elif estado == "ANULADA":
+        statement = statement.where(~activas.exists())
+    if cliente_id:
+        statement = statement.where(
+            select(RemisionFacturacion.id)
+            .join(Remision, Remision.id == RemisionFacturacion.remision_id)
+            .where(RemisionFacturacion.factura_id == Factura.id, Remision.cliente_id == cliente_id)
+            .exists()
+        )
+    return statement
+
+
 COLUMNAS_ORDENABLES_FACTURAS = {
     "numero_factura",
     "fecha_factura",
@@ -362,18 +408,21 @@ def listar_facturas(
     page_size: int = Query(20, ge=1, le=100),
     desde: date | None = Query(None),
     hasta: date | None = Query(None),
+    anio: int | None = Query(None, ge=2000, le=2100, description="Año de la fecha de factura"),
+    mes: int | None = Query(None, ge=1, le=12, description="Mes de la fecha de factura"),
+    cliente_id: int | None = Query(None, description="Facturas con remisiones de este cliente"),
+    serie: str | None = Query(None, description="Serie/prefijo: F-7, F-203, L-201, L…"),
+    estado: str | None = Query(None, pattern="^(ACTIVA|ANULADA)$"),
     numero_factura: str | None = Query(None),
     ordenar_por: str | None = Query(None),
     sentido: str = Query("asc", pattern="^(asc|desc)$"),
     session: Session = Depends(get_session),
 ):
-    statement = select(Factura)
-    if desde:
-        statement = statement.where(Factura.fecha_factura >= desde)
-    if hasta:
-        statement = statement.where(Factura.fecha_factura <= hasta)
-    if numero_factura:
-        statement = statement.where(Factura.numero_factura.ilike(f"%{numero_factura}%"))
+    statement = filtrar_facturas(
+        select(Factura),
+        desde=desde, hasta=hasta, anio=anio, mes=mes, cliente_id=cliente_id,
+        serie=serie, estado=estado, numero_factura=numero_factura,
+    )
 
     total = session.exec(select(func.count()).select_from(statement.subquery())).one()
     if ordenar_por:

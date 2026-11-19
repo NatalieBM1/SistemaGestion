@@ -51,6 +51,26 @@ Para borrar los filtros de una tarjeta, haz clic en **Limpiar**.
 - La columna **ID** del reporte general es el identificador interno de la remisión; es el que se usa en [Cargas por Excel](/ayuda/cargas-excel).
 - La columna **ID del usuario** sale de la **Identificación (cédula)** del usuario; si no la tiene, queda vacía.
 
+## Cierre anual {#cierre-anual}
+
+La tarjeta **Cierre anual** genera un Excel con tres hojas para el año que elijas:
+
+| Hoja | Qué trae |
+|---|---|
+| **Resumen** | Total facturado del año, por mes, por cliente y por serie de factura; cantidad de facturas y de remisiones; remisiones del año sin facturar, facturadas parcialmente y «No aplica facturación»; y cuántas remisiones del año se facturaron en otro año (y al revés). |
+| **Facturas** | Una fila por factura del año: número, fecha, cliente, tipo (Total/Parcial), valor facturado y cantidad de remisiones. |
+| **Detalle** | Una fila por remisión facturada, con las mismas 32 columnas del reporte de remisiones facturadas. |
+
+:::pasos
+1. En la tarjeta **Cierre anual**, elige el **Año**.
+2. En **Agrupar por** elige **Fecha de factura (cierre contable)** o **Fecha de la remisión**.
+3. Haz clic en **Descargar Excel**. Un año completo puede tardar unos segundos (dice «Generando…»).
+:::
+
+:::nota
+Las cifras del cierre por fecha de factura coinciden con el listado de **Facturación** filtrado por ese año. El cierre por fecha de la remisión sirve cuando una factura cubre remisiones de otro año.
+:::
+
 ## Errores comunes
 
 | Situación | Solución |

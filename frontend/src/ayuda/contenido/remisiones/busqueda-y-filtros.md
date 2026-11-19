@@ -23,7 +23,7 @@ Con el buscador y los filtros reduces la lista a las remisiones que necesitas. C
 Los filtros están siempre visibles debajo del buscador.
 
 :::pasos
-1. Ingresa o elige uno o varios filtros (todos son opcionales): **Número de remisión**, **Placa**, **Proyecto**, **Número de factura**, **Desde**, **Hasta**, **Estado** y **Cliente**.
+1. Ingresa o elige uno o varios filtros (todos son opcionales): **Número de remisión**, **Placa**, **Proyecto**, **Número de factura**, **Desde**, **Hasta**, **Año**, **Mes**, **Estado** y **Cliente**.
 2. La tabla se actualiza sola con cada cambio. El botón **Buscar** vuelve a consultar los datos por si alguien más hizo cambios.
 3. Para quitar todos los filtros, haz clic en **Limpiar**.
 :::
@@ -39,7 +39,9 @@ Los filtros están siempre visibles debajo del buscador.
 | Número de factura | Factura en la que quedó la remisión | No | FV-0000 |
 | Desde | Fecha inicial (incluida) | No | 01/05/2026 |
 | Hasta | Fecha final (incluida) | No | 31/05/2026 |
-| Estado | Todos, No facturada, Facturada parcial o Facturada | No | No facturada |
+| Año | Año de la fecha de la remisión | No | 2025 |
+| Mes | Mes de la fecha de la remisión (con el año, o de todos los años) | No | Marzo |
+| Estado | Todos, No facturada, Facturada parcial, Facturada o No aplica facturación | No | No facturada |
 | Cliente | Un cliente de la lista, o Todos | No | Todos |
 :::
 

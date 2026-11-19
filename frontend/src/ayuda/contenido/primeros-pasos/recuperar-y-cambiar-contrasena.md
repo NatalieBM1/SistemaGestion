@@ -60,6 +60,18 @@ Cada persona, con su **propia cuenta**. Todos los roles (Administrador, Operador
 
 Se cierran todas las sesiones abiertas con la contraseña anterior, en cualquier equipo. Inicia sesión con la contraseña nueva.
 
+## Cambio obligatorio al entrar {#obligatorio}
+
+Si un administrador te creó la cuenta o te restableció la contraseña, al iniciar sesión verás la pantalla **Cambia tu contraseña** en lugar del sistema. Mientras no la cambies no puedes usar ninguna otra pantalla.
+
+:::pasos
+1. Escribe en **Contraseña actual** la contraseña que te dieron.
+2. Escribe la nueva en **Nueva contraseña** (mínimo 8 caracteres, distinta de la actual) y repítela en **Confirmar contraseña**.
+3. Haz clic en **Guardar contraseña**. Entras al sistema de inmediato.
+:::
+
+Si no quieres hacerlo en ese momento, haz clic en **Cerrar sesión**: la próxima vez que entres volverá a pedírtelo. Si recuperas la contraseña con el código del correo, ya no te lo pedirá.
+
 ## Cambiar la contraseña (si la recuerdas) {#cambiar}
 
 :::pasos

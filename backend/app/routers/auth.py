@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.core.database import get_session
-from app.core.deps import get_current_active_user
+from app.core.deps import get_current_active_user_con_cambio_pendiente
 from app.core.fechas import ahora_utc
 from app.core.rate_limit import (
     ALCANCE_CAMBIAR_PASSWORD,
@@ -76,6 +76,7 @@ def _usuario_me(session: Session, usuario: Usuario) -> UsuarioMe:
         email=usuario.email,
         roles=_roles_de_usuario(session, usuario.id),
         permisos=_permisos_de_usuario(session, usuario.id),
+        debe_cambiar_password=usuario.debe_cambiar_password,
     )
 
 
@@ -139,14 +140,14 @@ def refresh(payload: RefreshRequest, session: Session = Depends(get_session)):
 
 @router.get("/me", response_model=UsuarioMe)
 def me(
-    usuario: Usuario = Depends(get_current_active_user),
+    usuario: Usuario = Depends(get_current_active_user_con_cambio_pendiente),
     session: Session = Depends(get_session),
 ):
     return _usuario_me(session, usuario)
 
 
 @router.post("/logout")
-def logout(usuario: Usuario = Depends(get_current_active_user)):
+def logout(usuario: Usuario = Depends(get_current_active_user_con_cambio_pendiente)):
     return {
         "detail": (
             "Sesión cerrada del lado del cliente. Con JWT sin estado no hay nada "
@@ -162,7 +163,7 @@ def logout(usuario: Usuario = Depends(get_current_active_user)):
 def cambiar_password(
     request: Request,
     payload: CambiarPasswordRequest,
-    usuario: Usuario = Depends(get_current_active_user),
+    usuario: Usuario = Depends(get_current_active_user_con_cambio_pendiente),
     session: Session = Depends(get_session),
 ):
     """El usuario con sesión cambia su propia contraseña.
@@ -190,6 +191,7 @@ def cambiar_password(
 
     usuario.password_hash = hash_password(payload.nueva_password)
     usuario.token_version += 1
+    usuario.debe_cambiar_password = False
     session.add(usuario)
     session.commit()
     session.refresh(usuario)
@@ -295,6 +297,8 @@ def reset_password(
     usuario.reset_token_expires = None
     usuario.reset_intentos = 0
     usuario.token_version += 1
+    # Eligió su propia contraseña con el código: ya no hay cambio pendiente.
+    usuario.debe_cambiar_password = False
     session.add(usuario)
     session.commit()
 

@@ -1,16 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import literal
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlmodel import Session, func, or_, select
 
+from app.core.config import settings
 from app.core.database import get_session
-from app.core.deps import require_permission
+from app.core.deps import get_current_active_user, require_permission
 from app.core.errors import commit_or_409
 from app.core.ordenamiento import clausulas_orden
 from app.core.security import hash_password
 from app.core.simple_crud import build_simple_crud_router
 from app.models.usuario import Permiso, Rol, RolPermiso, Usuario, UsuarioRol
 from app.schemas.admin import (
+    ActivarHistoricoRequest,
+    ActivarHistoricoResponse,
     AsignarPermisos,
     AsignarRoles,
     PermisoCreate,
@@ -25,6 +28,7 @@ from app.schemas.admin import (
 )
 from app.schemas.common import PaginatedResponse
 from app.services import admin_service as svc
+from app.services import usuarios_historicos as historicos_svc
 from app.services.admin_service import ADMIN_PERMISO
 
 router = APIRouter(
@@ -66,6 +70,8 @@ def _serializar_usuario(session: Session, usuario: Usuario) -> UsuarioRead:
         email=usuario.email,
         identificacion=usuario.identificacion,
         activo=usuario.activo,
+        historico=usuario.historico,
+        debe_cambiar_password=usuario.debe_cambiar_password,
         creado_en=usuario.creado_en,
         actualizado_en=usuario.actualizado_en,
         roles=_roles_de_usuario(session, usuario.id),
@@ -194,6 +200,9 @@ def crear_usuario(payload: UsuarioCreate, session: Session = Depends(get_session
         identificacion=payload.identificacion,
         password_hash=hash_password(payload.password),
         activo=payload.activo,
+        # En producción quien recibe una cuenta nueva debe cambiar la
+        # contraseña que le asignaron al primer ingreso.
+        debe_cambiar_password=settings.es_produccion,
     )
     session.add(usuario)
     commit_or_409(session)
@@ -201,12 +210,40 @@ def crear_usuario(payload: UsuarioCreate, session: Session = Depends(get_session
     return _serializar_usuario(session, usuario)
 
 
+MENSAJE_HISTORICO = (
+    "Es un usuario histórico (creador de remisiones del Excel, sin acceso). "
+    "Para darle acceso usa «Activar cuenta»: el sistema le asigna una contraseña temporal aleatoria."
+)
+
+
+@router.post("/usuarios/historicos/activar", response_model=ActivarHistoricoResponse)
+def activar_historico(
+    payload: ActivarHistoricoRequest,
+    response: Response,
+    session: Session = Depends(get_session),
+    actual: Usuario = Depends(get_current_active_user),
+):
+    """Convierte un usuario histórico en cuenta real (correo, rol, contraseña
+    temporal aleatoria y cambio obligatorio al primer ingreso). La contraseña
+    viene en la respuesta UNA sola vez."""
+    usuario, password = historicos_svc.activar_usuario_historico(
+        session, identificacion=payload.identificacion, email=payload.email, rol=payload.rol, actor_id=actual.id
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return ActivarHistoricoResponse(usuario=_serializar_usuario(session, usuario), password_temporal=password)
+
+
 @router.put("/usuarios/{usuario_id}", response_model=UsuarioRead)
 def actualizar_usuario(
-    usuario_id: int, payload: UsuarioUpdate, session: Session = Depends(get_session)
+    usuario_id: int,
+    payload: UsuarioUpdate,
+    session: Session = Depends(get_session),
+    actual: Usuario = Depends(get_current_active_user),
 ):
     usuario = _obtener_usuario_o_404(session, usuario_id)
     datos = payload.model_dump(exclude_unset=True)
+    if usuario.historico and ({"email", "password", "activo"} & set(datos)):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=MENSAJE_HISTORICO)
     _verificar_email_unico(session, datos.get("email"), excluir_id=usuario_id)
     if datos.get("activo") is False:
         svc.validar_no_deja_sistema_sin_administrador(
@@ -215,6 +252,9 @@ def actualizar_usuario(
     password = datos.pop("password", None)
     if password:
         usuario.password_hash = hash_password(password)
+        # Restablecida por un administrador: el usuario debe cambiarla al
+        # entrar (salvo que el administrador cambie la suya propia).
+        usuario.debe_cambiar_password = usuario.id != actual.id
     # Cambiar la contraseña o desactivar al usuario cierra sus sesiones
     # abiertas: los JWT emitidos con la versión anterior dejan de valer.
     if password or (datos.get("activo") is False and usuario.activo):
@@ -242,6 +282,8 @@ def asignar_roles_a_usuario(
     usuario_id: int, payload: AsignarRoles, session: Session = Depends(get_session)
 ):
     usuario = _obtener_usuario_o_404(session, usuario_id)
+    if usuario.historico:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=MENSAJE_HISTORICO)
     for rol_id in payload.roles_ids:
         _obtener_rol_o_404(session, rol_id)
         if session.get(UsuarioRol, (usuario_id, rol_id)) is None:

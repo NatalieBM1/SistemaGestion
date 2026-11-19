@@ -217,7 +217,7 @@ export function ListadoTerceros() {
       ),
     },
     { key: "telefono", header: "Teléfono", monoData: true, sortField: "telefono", render: (t) => t.telefono ?? "—" },
-    { key: "municipio", sortField: "municipio", header: "Municipio", render: (t) => t.municipio_nombre ?? "—" },
+    { key: "municipio", sortField: "municipio", header: "Municipio", render: (t) => t.municipio_nombre ?? t.ciudad ?? "—" },
     {
       key: "acciones",
       header: "",

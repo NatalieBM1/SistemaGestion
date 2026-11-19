@@ -12,11 +12,12 @@ class Settings(BaseSettings):
     app_env: str = "production"
     database_url: str
     secret_key: str
-    # Contraseña del usuario administrador inicial (solo la usa seed_auth.py,
-    # una vez, para crear la cuenta si no existe). Sin valor por defecto a
-    # propósito: hay que fijar ADMIN_INITIAL_PASSWORD en el .env antes de
-    # correr el seed. Cámbiala desde la app apenas entres la primera vez.
-    admin_initial_password: str
+    # Administrador inicial (solo en producción; ver seed_auth.py): correo y
+    # contraseña desde variables de entorno. Se crea una sola vez, con cambio
+    # de contraseña obligatorio al primer ingreso. En desarrollo no se usan:
+    # los usuarios salen de app/scripts/setup_usuarios.py.
+    admin_initial_email: str | None = None
+    admin_initial_password: str | None = None
     # Orígenes permitidos para CORS (frontend Vite en desarrollo). En producción
     # se debe fijar CORS_ORIGINS con el/los dominios reales, separados por coma.
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"

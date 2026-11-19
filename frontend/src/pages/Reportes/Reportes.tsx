@@ -2,13 +2,14 @@ import { useMutation } from "@tanstack/react-query";
 import { Download, FileSpreadsheet } from "lucide-react";
 import { useState } from "react";
 import {
+  descargarCierreAnual,
   descargarReporteFacturadas,
   descargarReporteGeneral,
   getBlobErrorMessage,
   guardarBlobComoArchivo,
   type ReporteFiltros,
 } from "../../api/reportes";
-import { AsyncSelect, Badge, Button, InputFecha, PageHeader, Select, useToast } from "../../components/ui";
+import { AsyncSelect, Badge, Button, InputFecha, PageHeader, Select, aniosDisponibles, useToast } from "../../components/ui";
 import { usePageTitle } from "../../store/pageTitleStore";
 import styles from "./Reportes.module.css";
 import { AYUDA } from "../../ayuda/rutas";
@@ -110,6 +111,7 @@ function ReporteCard({ titulo, descripcion, nombreArchivoBase, columnas, descarg
           <option value="NO_FACTURADA">No facturada</option>
           <option value="FACTURADA_PARCIAL">Facturada parcial</option>
           <option value="FACTURADA">Facturada</option>
+          <option value="NO_APLICA">No aplica facturación</option>
         </Select>
       </div>
 
@@ -132,6 +134,64 @@ function ReporteCard({ titulo, descripcion, nombreArchivoBase, columnas, descarg
           onClick={() => mutation.mutate()}
         >
           {mutation.isPending ? "Descargando…" : "Descargar Excel"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CierreAnualCard() {
+  const toast = useToast();
+  const anios = aniosDisponibles();
+  const [anio, setAnio] = useState<number>(anios[0]);
+  const [base, setBase] = useState<"factura" | "remision">("factura");
+
+  const mutation = useMutation({
+    mutationFn: () => descargarCierreAnual(anio, base),
+    onSuccess: (blob) => {
+      guardarBlobComoArchivo(blob, `cierre-anual-${anio}${base === "remision" ? "-por-fecha-remision" : ""}.xlsx`);
+      toast.success(`Cierre anual ${anio} descargado.`);
+    },
+    onError: async (error) => {
+      toast.error(await getBlobErrorMessage(error, "No se pudo generar el cierre anual."));
+    },
+  });
+
+  return (
+    <div className={styles.card}>
+      <div className={styles.cardHeader}>
+        <div className={styles.cardTitulo}>
+          <FileSpreadsheet size={20} strokeWidth={1.75} style={{ color: "var(--accent)" }} />
+          <h3 style={{ margin: 0 }}>Cierre anual</h3>
+        </div>
+        <Badge variant="neutral">3 hojas</Badge>
+      </div>
+      <p className={styles.descripcion}>
+        Resumen del año (total facturado por mes, por cliente y por serie de factura; facturas, remisiones, no facturadas y
+        «No aplica facturación»), una hoja con cada factura del año y el detalle por remisión facturada con las 32 columnas
+        del reporte de facturadas. Un año completo puede tardar unos segundos.
+      </p>
+      <div className={styles.filtros}>
+        <Select label="Año" value={anio} onChange={(e) => setAnio(Number(e.target.value))}>
+          {anios.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </Select>
+        <Select label="Agrupar por" value={base} onChange={(e) => setBase(e.target.value as "factura" | "remision")}>
+          <option value="factura">Fecha de factura (cierre contable)</option>
+          <option value="remision">Fecha de la remisión</option>
+        </Select>
+      </div>
+      <div className={styles.acciones}>
+        <Button
+          variant="primary"
+          leftIcon={<Download size={16} />}
+          loading={mutation.isPending}
+          onClick={() => mutation.mutate()}
+        >
+          {mutation.isPending ? "Generando…" : "Descargar Excel"}
         </Button>
       </div>
     </div>
@@ -163,6 +223,7 @@ export function Reportes() {
           columnas={COLUMNAS_FACTURADAS}
           descargar={descargarReporteFacturadas}
         />
+        <CierreAnualCard />
       </div>
     </PageHeader>
   );

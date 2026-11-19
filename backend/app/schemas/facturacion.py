@@ -102,6 +102,15 @@ class FacturaRead(BaseModel):
     fecha_factura: date
     cantidad_remisiones: int
     valor_total_facturado: Decimal
+    # Cliente de la factura (sale de sus remisiones). Si tiene remisiones de
+    # varios clientes: cliente_nombre = "VARIOS CLIENTES (n)" y cliente_id None.
+    cliente_id: int | None = None
+    cliente_nombre: str | None = None
+    # TOTAL, PARCIAL (si alguna de sus facturaciones activas es parcial) o
+    # None si todas están anuladas.
+    tipo: str | None = None
+    # ACTIVA (tiene facturaciones vigentes) o ANULADA (todas anuladas).
+    estado: str = "ACTIVA"
 
 
 class RemisionFacturacionRead(BaseModel):

@@ -3,8 +3,6 @@ Pantalla/mensajes sin ceros, reportes con la forma de la referencia
 (6 dígitos), sin cambiar lo guardado. Las pruebas con base usan el clon
 (TEST_DATABASE_URL) dentro de una transacción que se revierte."""
 
-import openpyxl
-import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
@@ -16,11 +14,10 @@ from app.main import app
 from app.models.remision import Remision
 from app.models.usuario import Permiso, RolPermiso, Usuario, UsuarioRol
 from app.routers.remisiones import listar_remisiones
-from app.scripts import importar_registros as imp
 
 RUTA_REFERENCIA = nr.__file__  # solo para ubicar el repo
 FILTROS_LISTADO = {
-    "page": 1, "page_size": 100, "desde": None, "hasta": None, "numero_orden_servicio": None,
+    "page": 1, "page_size": 100, "desde": None, "hasta": None, "anio": None, "mes": None, "numero_orden_servicio": None,
     "tercero_id": None, "placa": None, "proyecto_id": None, "estado_facturacion": None,
     "factura": None, "q": None, "ordenar_por": None, "sentido": "asc",
 }
@@ -43,18 +40,8 @@ def test_formas_del_numero(entrada, mostrar, reporte, clave):
     assert nr.clave(entrada) == clave
 
 
-def test_hojas_de_referencia_usan_6_digitos():
-    """La decisión del reporte sale de aquí: en las dos hojas de referencia
-    de formatos/ el número aparece como "GTS-006525"."""
-    from pathlib import Path
-
-    formatos = Path(__file__).resolve().parents[1] / "app" / "data_import" / "formatos"
-    for nombre in ("reporte-remisiones-general-programa_nuevo.xlsx", "reporte-remisiones-facturadas-programa_nuevo.xlsx"):
-        ws = openpyxl.load_workbook(formatos / nombre).active
-        col = [c.value for c in ws[1]].index("numero_remision") + 1
-        valores = [ws.cell(r, col).value for r in range(2, ws.max_row + 1) if ws.cell(r, col).value]
-        valores = [v for v in valores if nr.clave(v)]
-        assert valores and all(v == nr.para_reporte(v) for v in valores), valores
+# Los reportes escriben el número con 6 dígitos ("GTS-006525"), como las hojas
+# de referencia del cliente; la regla la cubre la prueba parametrizada de arriba.
 
 
 @pytest.fixture
@@ -89,20 +76,8 @@ def test_busqueda_acepta_las_tres_formas(pg_engine, como):
         assert r.id in [i.id for i in resultado.items]
 
 
-def test_importador_no_duplica_con_ceros(session_con_rollback, tmp_path, monkeypatch):
-    s = session_con_rollback
-    monkeypatch.setattr(imp, "RUTA_ERRORES", tmp_path / "errores.csv")
-    original = s.exec(select(Remision).where(Remision.numero_remision == "GTS-6520")).one()
-    antes = s.exec(select(Remision.id)).all()
-    df = pd.DataFrame([{
-        "Numero de remision": "GTS-006520", "Fecha": original.fecha, "ID del cliente": "1",
-        "Estado": "NO FACTURADA", "Producto": None,
-    }])
-    df["_prefijo"], df["_consec"] = zip(*df["Numero de remision"].map(imp._split_prefijo), strict=True)
-    resultado = imp.importar_remisiones(s, df, dry_run=False)
-    assert resultado["creadas"] == 0
-    assert resultado["omitidas_ya_existian"] == 1
-    assert s.exec(select(Remision.id)).all() == antes
+# El importador nuevo (app/data_import) también trata "GTS-6525" y
+# "GTS-006525" como la misma remisión: ver tests/test_carga_excel.py.
 
 
 @pytest.fixture
